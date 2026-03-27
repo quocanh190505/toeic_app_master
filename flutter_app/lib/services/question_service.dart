@@ -2,16 +2,10 @@ import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 
 import '../models/question_model.dart';
+import 'api_client.dart';
 
 class QuestionService {
-  final Dio _dio = Dio(
-    BaseOptions(
-      baseUrl: 'http://10.0.2.2:8000',
-      headers: {'Content-Type': 'application/json'},
-      connectTimeout: const Duration(seconds: 5),
-      receiveTimeout: const Duration(seconds: 5),
-    ),
-  );
+  final Dio _dio = ApiClient().dio;
 
   Future<List<QuestionModel>> getQuestions({int? part}) async {
     try {
@@ -22,11 +16,14 @@ class QuestionService {
         },
       );
 
+      debugPrint('URL: ${response.requestOptions.uri}');
       debugPrint('STATUS: ${response.statusCode}');
       debugPrint('DATA: ${response.data}');
 
       if (response.data is! List) {
-        throw Exception('API không trả về List. response.data = ${response.data}');
+        throw Exception(
+          'API không trả về List. response.data = ${response.data}',
+        );
       }
 
       final data = response.data as List;
@@ -36,8 +33,13 @@ class QuestionService {
           .toList();
     } on DioException catch (e) {
       debugPrint('Dio error: ${e.message}');
-      debugPrint('Dio response: ${e.response?.data}');
-      throw Exception('Lỗi gọi API: ${e.message}');
+      debugPrint('Error URL: ${e.requestOptions.uri}');
+      debugPrint('Error status: ${e.response?.statusCode}');
+      debugPrint('Error data: ${e.response?.data}');
+      throw Exception(
+        e.response?.data?['detail']?.toString() ??
+            'Lỗi gọi API: ${e.message}',
+      );
     } catch (e) {
       debugPrint('Parse error: $e');
       rethrow;

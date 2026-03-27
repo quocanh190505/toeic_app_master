@@ -1,207 +1,335 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
-
+import '../../services/test_service.dart';
+import '../../core/theme/app_theme.dart';
 import '../../models/question_model.dart';
-import '../../services/audio_service.dart';
-import '../../services/auth_service.dart';
-import '../../services/progress_service.dart';
-import '../../services/question_service.dart';
+import 'result_screen.dart';
 
 class PracticeScreen extends StatefulWidget {
-  const PracticeScreen({super.key});
+  final String testType;
+  final int? part;
+
+  const PracticeScreen({
+    super.key,
+    required this.testType,
+    this.part,
+  });
 
   @override
   State<PracticeScreen> createState() => _PracticeScreenState();
 }
 
 class _PracticeScreenState extends State<PracticeScreen> {
-  final QuestionService _questionService = QuestionService();
+  final TestService service = TestService();
 
-  bool _loading = true;
-  String? _error;
-  List<QuestionModel> _questions = [];
-  int? _selectedIndex;
-  int? _selectedOptionIndex;
-  bool _submitted = false;
+  List<QuestionModel> questions = [];
+  final Map<int, String> selectedAnswers = {};
+  final Set<int> bookmarked = {};
+
+  bool loading = true;
+  bool submitting = false;
+  String? error;
 
   @override
   void initState() {
     super.initState();
-    _loadQuestions();
+    loadQuestions();
   }
 
-  Future<void> _loadQuestions() async {
+  Future<void> loadQuestions() async {
+    if (mounted) {
+      setState(() {
+        loading = true;
+        error = null;
+        questions = [];
+        selectedAnswers.clear();
+      });
+    }
+
     try {
-      final questions = await _questionService.getQuestions();
+      List<QuestionModel> data = [];
+
+      if (widget.testType == 'full') {
+        data = await service.getFullTest();
+      } else {
+        // Đã sửa lỗi null safety ở đây
+        if (widget.part != null) {
+          data = await service.getMiniTest(part: widget.part!);
+        } else {
+          // Nếu không truyền part (Mini test ngẫu nhiên), tải 30 câu ngẫu nhiên
+          data = await service.getQuestions(randomMode: true, limit: 30);
+        }
+      }
+
+      if (!mounted) return;
 
       setState(() {
-        _questions = questions;
-        _loading = false;
-        if (_questions.isNotEmpty) {
-          _selectedIndex = 0;
-        }
+        questions = data;
       });
     } catch (e) {
+      if (!mounted) return;
+
       setState(() {
-        _loading = false;
-        _error = 'Không tải được câu hỏi';
+        error = e.toString().replaceFirst('Exception: ', '');
+      });
+    } finally {
+      if (!mounted) return;
+
+      setState(() {
+        loading = false;
       });
     }
   }
 
-  Future<void> _submitAnswer() async {
-    final userId = context.read<AuthService>().userId;
-    if (userId == null || _selectedIndex == null || _selectedOptionIndex == null) {
+  Future<void> toggleBookmark(int questionId) async {
+    try {
+      if (bookmarked.contains(questionId)) {
+        await service.unbookmarkQuestion(questionId);
+        bookmarked.remove(questionId);
+      } else {
+        await service.bookmarkQuestion(questionId);
+        bookmarked.add(questionId);
+      }
+
+      if (mounted) {
+        setState(() {});
+      }
+    } catch (_) {}
+  }
+
+  Future<void> submit() async {
+    if (questions.isEmpty) {
+      setState(() {
+        error = 'Không có câu hỏi để nộp bài';
+      });
+      return;
+    }
+
+    if (selectedAnswers.length < questions.length) {
+      setState(() {
+        error = 'Bạn chưa trả lời hết tất cả câu hỏi';
+      });
       return;
     }
 
     setState(() {
-      _submitted = true;
+      submitting = true;
+      error = null;
     });
 
-    await context.read<ProgressService>().saveStudyProgress(userId);
+    try {
+      final answers = questions.map((q) {
+        return {
+          'question_id': q.id,
+          'selected_answer': selectedAnswers[q.id],
+        };
+      }).toList();
+
+      final result = await service.submit(
+        testType: widget.testType,
+        answers: answers,
+      );
+
+      if (!mounted) return;
+
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(
+          builder: (_) => ResultScreen(resultData: result),
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+
+      setState(() {
+        error = e.toString().replaceFirst('Exception: ', '');
+      });
+    } finally {
+      if (!mounted) return;
+
+      setState(() {
+        submitting = false;
+      });
+    }
+  }
+
+  Widget buildOption(QuestionModel q, String key) {
+    final value = (q.options[key] ?? '').toString();
+
+    if (value.isEmpty) return const SizedBox.shrink();
+
+    return RadioListTile<String>(
+      contentPadding: EdgeInsets.zero,
+      title: Text('$key. $value'),
+      value: key,
+      groupValue: selectedAnswers[q.id],
+      onChanged: (v) {
+        if (v != null) {
+          setState(() {
+            selectedAnswers[q.id] = v;
+            error = null;
+          });
+        }
+      },
+    );
+  }
+
+  Widget _buildHeader() {
+    final title = widget.testType == 'full' ? 'Full Test' : 'Mini Test';
+    final subtitle = widget.testType == 'full'
+        ? 'Bài test đầy đủ'
+        : widget.part != null
+            ? 'Mini Test - Part ${widget.part}'
+            : 'Mini Test ngẫu nhiên';
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 4),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            title,
+            style: const TextStyle(
+              fontSize: 22,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            subtitle,
+            style: const TextStyle(
+              color: AppTheme.subText,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Tổng số câu: ${questions.length}',
+            style: const TextStyle(
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
-    final audioService = context.read<AudioService>();
-
-    return Scaffold(
-      appBar: AppBar(title: const Text('Luyện tập TOEIC')),
-      body: _loading
-          ? const Center(child: CircularProgressIndicator())
-          : _error != null
-              ? Center(child: Text(_error!))
-              : _questions.isEmpty
-                  ? const Center(child: Text('Chưa có câu hỏi'))
-                  : Row(
-                      children: [
-                        Expanded(
-                          flex: 2,
-                          child: Container(
-                            color: Colors.grey.shade100,
-                            child: ListView.separated(
-                              padding: const EdgeInsets.all(12),
-                              itemCount: _questions.length,
-                              separatorBuilder: (_, __) => const SizedBox(height: 8),
-                              itemBuilder: (context, index) {
-                                final q = _questions[index];
-                                final selected = index == _selectedIndex;
-
-                                return ListTile(
-                                  tileColor: selected ? Colors.blue.shade50 : Colors.white,
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(12),
-                                  ),
-                                  title: Text('Câu ${index + 1} - Part ${q.part}'),
-                                  subtitle: Text(
-                                    q.content,
-                                    maxLines: 2,
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                  onTap: () {
-                                    setState(() {
-                                      _selectedIndex = index;
-                                      _selectedOptionIndex = null;
-                                      _submitted = false;
-                                    });
-                                  },
-                                );
-                              },
-                            ),
-                          ),
-                        ),
-                        Expanded(
-                          flex: 3,
-                          child: Padding(
-                            padding: const EdgeInsets.all(20),
-                            child: _buildQuestionDetail(audioService),
-                          ),
-                        ),
-                      ],
-                    ),
-    );
-  }
-
-  Widget _buildQuestionDetail(AudioService audioService) {
-    if (_selectedIndex == null) {
-      return const Center(child: Text('Chọn một câu hỏi'));
+    if (loading) {
+      return const Scaffold(
+        body: Center(child: CircularProgressIndicator()),
+      );
     }
 
-    final question = _questions[_selectedIndex!];
-
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(20),
-        child: ListView(
-          children: [
-            Text(
-              'Part ${question.part}',
-              style: const TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-            const SizedBox(height: 12),
-            Text(
-              question.content,
-              style: const TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 16),
-            if (question.audioUrl != null && question.audioUrl!.isNotEmpty)
-              Padding(
-                padding: const EdgeInsets.only(bottom: 16),
-                child: FilledButton.icon(
-                  onPressed: () async {
-                    await audioService.playUrl(question.audioUrl!);
-                  },
-                  icon: const Icon(Icons.play_arrow),
-                  label: const Text('Phát audio'),
-                ),
-              ),
-            ...List.generate(question.options.length, (index) {
-              return RadioListTile<int>(
-                value: index,
-                groupValue: _selectedOptionIndex,
-                onChanged: _submitted
-                    ? null
-                    : (value) {
-                        setState(() {
-                          _selectedOptionIndex = value;
-                        });
-                      },
-                title: Text(question.options[index]),
-              );
-            }),
-            const SizedBox(height: 16),
-            SizedBox(
-              width: double.infinity,
-              child: FilledButton(
-                onPressed: (_submitted || _selectedOptionIndex == null)
-                    ? null
-                    : _submitAnswer,
-                child: const Text('Nộp đáp án'),
-              ),
-            ),
-            if (_submitted) ...[
-              const SizedBox(height: 16),
-              Container(
-                padding: const EdgeInsets.all(14),
-                decoration: BoxDecoration(
-                  color: Colors.blue.shade50,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Text(
-                  question.explanation ?? 'Chưa có giải thích cho câu này.',
-                ),
-              ),
-            ],
-          ],
-        ),
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(widget.testType == 'full' ? 'Full Test' : 'Mini Test'),
+        actions: [
+          IconButton(
+            onPressed: loadQuestions,
+            icon: const Icon(Icons.refresh),
+            tooltip: 'Tải lại',
+          ),
+        ],
       ),
+      body: questions.isEmpty
+          ? Center(
+              child: Padding(
+                padding: const EdgeInsets.all(20),
+                child: Text(
+                  error ?? 'Không tải được câu hỏi',
+                  textAlign: TextAlign.center,
+                ),
+              ),
+            )
+          : Column(
+              children: [
+                _buildHeader(),
+                Expanded(
+                  child: ListView.separated(
+                    padding: const EdgeInsets.all(16),
+                    itemCount: questions.length,
+                    separatorBuilder: (_, __) => const SizedBox(height: 14),
+                    itemBuilder: (context, index) {
+                      final q = questions[index];
+
+                      return Card(
+                        child: Padding(
+                          padding: const EdgeInsets.all(16),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: Text(
+                                      'Câu ${index + 1} · Part ${q.part}',
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.w800,
+                                        fontSize: 16,
+                                      ),
+                                    ),
+                                  ),
+                                  IconButton(
+                                    onPressed: () => toggleBookmark(q.id),
+                                    icon: Icon(
+                                      bookmarked.contains(q.id)
+                                          ? Icons.bookmark
+                                          : Icons.bookmark_border,
+                                      color: bookmarked.contains(q.id)
+                                          ? AppTheme.secondary
+                                          : null,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 10),
+                              Text(
+                                q.content,
+                                style: const TextStyle(fontSize: 15),
+                              ),
+                              const SizedBox(height: 12),
+                              buildOption(q, 'A'),
+                              buildOption(q, 'B'),
+                              buildOption(q, 'C'),
+                              buildOption(q, 'D'),
+                            ],
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+                if (error != null)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: Text(
+                      error!,
+                      style: const TextStyle(color: AppTheme.danger),
+                    ),
+                  ),
+                Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: ElevatedButton(
+                    onPressed: submitting ? null : submit,
+                    child: submitting
+                        ? const SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: Colors.white,
+                            ),
+                          )
+                        : Text(
+                            widget.testType == 'full'
+                                ? 'Nộp Full Test'
+                                : 'Nộp Mini Test',
+                          ),
+                  ),
+                ),
+              ],
+            ),
     );
   }
 }
