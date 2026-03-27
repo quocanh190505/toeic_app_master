@@ -1,13 +1,11 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
-from app.core.security import get_current_user, require_admin
-from app.models.entities import User, VocabularyWord, UserStudiedWord, UserProgress
-from app.schemas.vocabulary import VocabularyCreate
+from app.core.security import get_current_user
+from app.models.entities import User, VocabularyWord, UserStudiedWord, UserProgress, Topic
 
 router = APIRouter(prefix="/vocabulary", tags=["vocabulary"])
-
 
 def ensure_progress(db: Session, user_id: int):
     progress = db.query(UserProgress).filter(UserProgress.user_id == user_id).first()
@@ -27,46 +25,49 @@ def ensure_progress(db: Session, user_id: int):
         db.flush()
     return progress
 
-
-@router.post("")
-def create_word(
-    payload: VocabularyCreate,
-    db: Session = Depends(get_db),
-    admin: User = Depends(require_admin),
-):
-    existing = db.query(VocabularyWord).filter(VocabularyWord.word == payload.word).first()
-    if existing:
-        raise HTTPException(status_code=400, detail="Word already exists")
-
-    word = VocabularyWord(
-        word=payload.word,
-        meaning=payload.meaning,
-        example=payload.example,
-    )
-    db.add(word)
-    db.commit()
-    db.refresh(word)
-
-    return {"message": "Word created successfully", "id": word.id}
-
-
 @router.get("")
 def list_words(
+    topic_id: int | None = Query(default=None), 
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    words = db.query(VocabularyWord).order_by(VocabularyWord.id.desc()).all()
+    query = db.query(VocabularyWord)
+    
+    if topic_id is not None:
+        query = query.filter(VocabularyWord.topic_id == topic_id)
+        
+    words = query.order_by(VocabularyWord.id.desc()).all()
+
+    # Lấy danh sách ID các từ mà User này đã học
+    studied_records = db.query(UserStudiedWord.word_id).filter(
+        UserStudiedWord.user_id == current_user.id
+    ).all()
+    studied_word_ids = {record[0] for record in studied_records}
+
     return [
         {
             "id": w.id,
             "word": w.word,
             "meaning": w.meaning,
             "example": w.example,
+            "topic_id": w.topic_id,
+            "is_studied": w.id in studied_word_ids # Trả về True/False để hiện tick xanh
         }
         for w in words
     ]
-
-
+@router.get("/topics")
+def list_topics(db: Session = Depends(get_db)):
+    topics = db.query(Topic).all()
+    # Trả về danh sách các chủ đề để Flutter vẽ lên màn hình
+    return [
+        {
+            "id": t.id,
+            "name": t.name,
+            "description": t.description,
+            "image_url": t.image_url
+        }
+        for t in topics
+    ]
 @router.post("/{word_id}/study")
 def mark_word_studied(
     word_id: int,
@@ -94,7 +95,6 @@ def mark_word_studied(
 
     return {"message": "Word marked as studied"}
 
-
 @router.get("/studied/me")
 def my_studied_words(
     db: Session = Depends(get_db),
@@ -114,6 +114,7 @@ def my_studied_words(
             "word": word.word,
             "meaning": word.meaning,
             "example": word.example,
+            "topic_id": word.topic_id
         }
         for row, word in rows
     ]

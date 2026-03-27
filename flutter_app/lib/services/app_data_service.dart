@@ -27,8 +27,13 @@ class AppDataService {
     return Map<String, dynamic>.from(response.data);
   }
 
-  Future<List<VocabularyWordModel>> getVocabulary() async {
-    final response = await _dio.get('/vocabulary');
+  // Thêm tham số topicId vào đây
+  Future<List<VocabularyWordModel>> getVocabulary({int? topicId}) async {
+    // Nếu có truyền topicId thì thêm vào queryParameters
+    final response = await _dio.get(
+      '/vocabulary',
+      queryParameters: topicId != null ? {'topic_id': topicId} : null,
+    );
     final list = response.data as List;
     return list.map((e) => VocabularyWordModel.fromJson(e)).toList();
   }

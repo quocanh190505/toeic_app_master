@@ -52,7 +52,7 @@ class SplashGate extends StatelessWidget {
         }
 
         if (user.role.toLowerCase() == 'admin') {
-          return const AdminScreen();
+          return  const AdminScreen();
         }
 
         return const HomeScreen();

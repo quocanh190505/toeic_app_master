@@ -1,5 +1,6 @@
 from sqlalchemy import Column, Integer, String, DateTime, Float, ForeignKey, Text, Boolean, UniqueConstraint
 from sqlalchemy.sql import func
+from sqlalchemy.orm import relationship  # THÊM DÒNG NÀY ĐỂ TẠO LIÊN KẾT GIỮA CÁC BẢNG
 
 from app.core.database import Base
 
@@ -89,6 +90,18 @@ class UserBookmark(Base):
     created_at = Column(DateTime, server_default=func.now())
 
 
+# --- THÊM CLASS TOPIC MỚI ---
+class Topic(Base):
+    __tablename__ = "topics"
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String(255), nullable=False)
+    description = Column(Text, nullable=True)
+    image_url = Column(String(500), nullable=True)
+
+    words = relationship("VocabularyWord", back_populates="topic")
+
+
 class VocabularyWord(Base):
     __tablename__ = "vocabulary_words"
 
@@ -97,6 +110,10 @@ class VocabularyWord(Base):
     meaning = Column(Text, nullable=False)
     example = Column(Text, nullable=True)
     created_at = Column(DateTime, server_default=func.now())
+    
+    # --- THÊM 2 DÒNG NÀY ĐỂ LIÊN KẾT VỚI BẢNG TOPICS ---
+    topic_id = Column(Integer, ForeignKey("topics.id"), nullable=True)
+    topic = relationship("Topic", back_populates="words")
 
 
 class UserStudiedWord(Base):

@@ -100,6 +100,15 @@ def build_part_stats_response(part_stats):
     return response
 
 
+def delete_question_dependencies(db: Session, question_id: int) -> None:
+    db.query(TestAttemptAnswer).filter(
+        TestAttemptAnswer.question_id == question_id
+    ).delete(synchronize_session=False)
+    db.query(UserBookmark).filter(
+        UserBookmark.question_id == question_id
+    ).delete(synchronize_session=False)
+
+
 @router.get("")
 def list_questions(
     part: int | None = Query(default=None),
@@ -113,7 +122,7 @@ def list_questions(
     if part is not None:
         query = query.filter(Question.part == part)
 
-    questions = query.all()
+    questions = query.order_by(Question.id.desc()).all()
 
     if random_mode:
         random.shuffle(questions)
@@ -206,6 +215,8 @@ def submit_questions(
 ):
     if not payload.answers:
         raise HTTPException(status_code=400, detail="Answers cannot be empty")
+    if payload.test_type not in {"mini", "full", "custom"}:
+        raise HTTPException(status_code=400, detail="Invalid test_type")
 
     question_ids = [item.question_id for item in payload.answers]
 
@@ -568,6 +579,7 @@ def delete_question(
     if not question:
         raise HTTPException(status_code=404, detail="Question not found")
 
+    delete_question_dependencies(db, question_id)
     db.delete(question)
     db.commit()
 

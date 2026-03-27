@@ -1,7 +1,10 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
-import '../../services/test_service.dart';
+
 import '../../core/theme/app_theme.dart';
 import '../../models/question_model.dart';
+import '../../services/test_service.dart';
 import 'result_screen.dart';
 
 class PracticeScreen extends StatefulWidget {
@@ -19,15 +22,23 @@ class PracticeScreen extends StatefulWidget {
 }
 
 class _PracticeScreenState extends State<PracticeScreen> {
+  static const Duration _fullTestDuration = Duration(hours: 2);
+
   final TestService service = TestService();
 
   List<QuestionModel> questions = [];
   final Map<int, String> selectedAnswers = {};
   final Set<int> bookmarked = {};
 
+  Timer? _timer;
+  Duration _remainingTime = _fullTestDuration;
+  bool _timeExpired = false;
+
   bool loading = true;
   bool submitting = false;
   String? error;
+
+  bool get _isFullTest => widget.testType == 'full';
 
   @override
   void initState() {
@@ -35,29 +46,79 @@ class _PracticeScreenState extends State<PracticeScreen> {
     loadQuestions();
   }
 
+  @override
+  void dispose() {
+    _stopTimer();
+    super.dispose();
+  }
+
+  void _stopTimer() {
+    _timer?.cancel();
+    _timer = null;
+  }
+
+  void _startFullTestTimer() {
+    _stopTimer();
+
+    if (!_isFullTest || questions.isEmpty) return;
+
+    _remainingTime = _fullTestDuration;
+    _timeExpired = false;
+
+    _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (!mounted) {
+        timer.cancel();
+        return;
+      }
+
+      if (_remainingTime.inSeconds <= 1) {
+        timer.cancel();
+        setState(() {
+          _remainingTime = Duration.zero;
+          _timeExpired = true;
+        });
+        _submitInternal(allowIncomplete: true, autoSubmitted: true);
+        return;
+      }
+
+      setState(() {
+        _remainingTime -= const Duration(seconds: 1);
+      });
+    });
+  }
+
+  String _formatDuration(Duration duration) {
+    final hours = duration.inHours.toString().padLeft(2, '0');
+    final minutes = (duration.inMinutes % 60).toString().padLeft(2, '0');
+    final seconds = (duration.inSeconds % 60).toString().padLeft(2, '0');
+    return '$hours:$minutes:$seconds';
+  }
+
   Future<void> loadQuestions() async {
+    _stopTimer();
+
     if (mounted) {
       setState(() {
         loading = true;
         error = null;
         questions = [];
         selectedAnswers.clear();
+        _timeExpired = false;
+        if (_isFullTest) {
+          _remainingTime = _fullTestDuration;
+        }
       });
     }
 
     try {
       List<QuestionModel> data = [];
 
-      if (widget.testType == 'full') {
+      if (_isFullTest) {
         data = await service.getFullTest();
+      } else if (widget.part != null) {
+        data = await service.getMiniTest(part: widget.part!);
       } else {
-        // Đã sửa lỗi null safety ở đây
-        if (widget.part != null) {
-          data = await service.getMiniTest(part: widget.part!);
-        } else {
-          // Nếu không truyền part (Mini test ngẫu nhiên), tải 30 câu ngẫu nhiên
-          data = await service.getQuestions(randomMode: true, limit: 30);
-        }
+        data = await service.getQuestions(randomMode: true, limit: 30);
       }
 
       if (!mounted) return;
@@ -65,6 +126,8 @@ class _PracticeScreenState extends State<PracticeScreen> {
       setState(() {
         questions = data;
       });
+
+      _startFullTestTimer();
     } catch (e) {
       if (!mounted) return;
 
@@ -97,24 +160,37 @@ class _PracticeScreenState extends State<PracticeScreen> {
   }
 
   Future<void> submit() async {
+    await _submitInternal();
+  }
+
+  Future<void> _submitInternal({
+    bool allowIncomplete = false,
+    bool autoSubmitted = false,
+  }) async {
     if (questions.isEmpty) {
       setState(() {
-        error = 'Không có câu hỏi để nộp bài';
+        error = 'Không có câu hỏi để nộp bài.';
       });
       return;
     }
 
-    if (selectedAnswers.length < questions.length) {
+    if (submitting) return;
+
+    if (!allowIncomplete && selectedAnswers.length < questions.length) {
       setState(() {
-        error = 'Bạn chưa trả lời hết tất cả câu hỏi';
+        error = 'Bạn chưa trả lời hết tất cả câu hỏi.';
       });
       return;
     }
 
     setState(() {
       submitting = true;
-      error = null;
+      error = autoSubmitted
+          ? 'Đã hết giờ. Hệ thống đang tự động nộp bài...'
+          : null;
     });
+
+    _stopTimer();
 
     try {
       final answers = questions.map((q) {
@@ -162,21 +238,55 @@ class _PracticeScreenState extends State<PracticeScreen> {
       title: Text('$key. $value'),
       value: key,
       groupValue: selectedAnswers[q.id],
-      onChanged: (v) {
-        if (v != null) {
-          setState(() {
-            selectedAnswers[q.id] = v;
-            error = null;
-          });
-        }
-      },
+      onChanged: _timeExpired
+          ? null
+          : (v) {
+              if (v != null) {
+                setState(() {
+                  selectedAnswers[q.id] = v;
+                  error = null;
+                });
+              }
+            },
+    );
+  }
+
+  Widget _buildTimerChip() {
+    final warning = _remainingTime.inMinutes < 10;
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: warning
+            ? AppTheme.danger.withOpacity(0.12)
+            : AppTheme.secondary.withOpacity(0.12),
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            Icons.timer_outlined,
+            size: 18,
+            color: warning ? AppTheme.danger : AppTheme.secondary,
+          ),
+          const SizedBox(width: 6),
+          Text(
+            _formatDuration(_remainingTime),
+            style: TextStyle(
+              fontWeight: FontWeight.w800,
+              color: warning ? AppTheme.danger : AppTheme.secondary,
+            ),
+          ),
+        ],
+      ),
     );
   }
 
   Widget _buildHeader() {
-    final title = widget.testType == 'full' ? 'Full Test' : 'Mini Test';
-    final subtitle = widget.testType == 'full'
-        ? 'Bài test đầy đủ'
+    final title = _isFullTest ? 'Full Test' : 'Mini Test';
+    final subtitle = _isFullTest
+        ? 'Mô phỏng bài thi TOEIC đầy đủ'
         : widget.part != null
             ? 'Mini Test - Part ${widget.part}'
             : 'Mini Test ngẫu nhiên';
@@ -197,16 +307,24 @@ class _PracticeScreenState extends State<PracticeScreen> {
           const SizedBox(height: 4),
           Text(
             subtitle,
-            style: const TextStyle(
-              color: AppTheme.subText,
-            ),
+            style: const TextStyle(color: AppTheme.subText),
           ),
           const SizedBox(height: 8),
-          Text(
-            'Tổng số câu: ${questions.length}',
-            style: const TextStyle(
-              fontWeight: FontWeight.w700,
-            ),
+          Wrap(
+            spacing: 10,
+            runSpacing: 10,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            children: [
+              Text(
+                'Tổng số câu: ${questions.length}',
+                style: const TextStyle(fontWeight: FontWeight.w700),
+              ),
+              Text(
+                'Đã chọn: ${selectedAnswers.length}/${questions.length}',
+                style: const TextStyle(fontWeight: FontWeight.w700),
+              ),
+              if (_isFullTest) _buildTimerChip(),
+            ],
           ),
         ],
       ),
@@ -223,10 +341,15 @@ class _PracticeScreenState extends State<PracticeScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(widget.testType == 'full' ? 'Full Test' : 'Mini Test'),
+        title: Text(_isFullTest ? 'Full Test' : 'Mini Test'),
         actions: [
+          if (_isFullTest)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 8),
+              child: _buildTimerChip(),
+            ),
           IconButton(
-            onPressed: loadQuestions,
+            onPressed: submitting ? null : loadQuestions,
             icon: const Icon(Icons.refresh),
             tooltip: 'Tải lại',
           ),
@@ -237,7 +360,7 @@ class _PracticeScreenState extends State<PracticeScreen> {
               child: Padding(
                 padding: const EdgeInsets.all(20),
                 child: Text(
-                  error ?? 'Không tải được câu hỏi',
+                  error ?? 'Không tải được câu hỏi.',
                   textAlign: TextAlign.center,
                 ),
               ),
@@ -311,7 +434,7 @@ class _PracticeScreenState extends State<PracticeScreen> {
                 Padding(
                   padding: const EdgeInsets.all(16),
                   child: ElevatedButton(
-                    onPressed: submitting ? null : submit,
+                    onPressed: submitting || _timeExpired ? null : submit,
                     child: submitting
                         ? const SizedBox(
                             width: 20,
@@ -322,9 +445,7 @@ class _PracticeScreenState extends State<PracticeScreen> {
                             ),
                           )
                         : Text(
-                            widget.testType == 'full'
-                                ? 'Nộp Full Test'
-                                : 'Nộp Mini Test',
+                            _isFullTest ? 'Nộp Full Test' : 'Nộp Mini Test',
                           ),
                   ),
                 ),

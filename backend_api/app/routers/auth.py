@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
@@ -22,6 +22,22 @@ from app.services.auth_service import (
 )
 
 router = APIRouter(prefix="/auth", tags=["auth"])
+
+
+def revoke_user_refresh_tokens(db: Session, user_id: int) -> None:
+    db.query(RefreshToken).filter(
+        RefreshToken.user_id == user_id,
+        RefreshToken.is_revoked == False,
+    ).update(
+        {"is_revoked": True},
+        synchronize_session=False,
+    )
+
+
+def is_expired(expires_at: datetime) -> bool:
+    if expires_at.tzinfo is None:
+        expires_at = expires_at.replace(tzinfo=timezone.utc)
+    return expires_at < datetime.now(timezone.utc)
 
 
 @router.post("/register")
@@ -104,7 +120,7 @@ def refresh_token_api(payload: RefreshTokenRequest, db: Session = Depends(get_db
     if token_row.is_revoked:
         raise HTTPException(status_code=401, detail="Refresh token revoked")
 
-    if token_row.expires_at < datetime.utcnow():
+    if is_expired(token_row.expires_at):
         raise HTTPException(status_code=401, detail="Refresh token expired")
 
     decoded = decode_refresh_token(payload.refresh_token)
@@ -149,6 +165,7 @@ def change_password(
         raise HTTPException(status_code=400, detail="Old password is incorrect")
 
     current_user.password_hash = hash_password(payload.new_password)
+    revoke_user_refresh_tokens(db, current_user.id)
     db.commit()
 
     return {"message": "Password changed successfully"}

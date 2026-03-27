@@ -1,8 +1,6 @@
-from collections import defaultdict
-
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
-from sqlalchemy import func
+from sqlalchemy import case, func
 
 from app.core.database import get_db
 from app.core.security import get_current_user
@@ -102,7 +100,10 @@ def my_part_stats(
         db.query(
             TestAttemptAnswer.part,
             func.count(TestAttemptAnswer.id).label("total"),
-            func.sum(func.case((TestAttemptAnswer.is_correct == True, 1), else_=0)).label("correct"),
+            func.coalesce(
+                func.sum(case((TestAttemptAnswer.is_correct == True, 1), else_=0)),
+                0,
+            ).label("correct"),
         )
         .join(TestAttempt, TestAttempt.id == TestAttemptAnswer.attempt_id)
         .filter(TestAttempt.user_id == current_user.id)

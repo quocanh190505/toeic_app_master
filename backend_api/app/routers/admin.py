@@ -7,8 +7,21 @@ from sqlalchemy.orm import Session
 
 from app.core.database import get_db
 from app.core.security import require_admin
-from app.models.entities import Question, User, TestAttempt
+# Đã bổ sung import đầy đủ
+from app.models.entities import (
+    Question,
+    RefreshToken,
+    TestAttempt,
+    TestAttemptAnswer,
+    Topic,
+    User,
+    UserBookmark,
+    UserProgress,
+    UserStudiedWord,
+    VocabularyWord,
+)
 from app.services.auth_service import hash_password
+from app.schemas.vocabulary import VocabularyCreate, VocabularyUpdatePayload
 
 router = APIRouter(prefix="/admin", tags=["admin"])
 
@@ -48,6 +61,23 @@ def delete_file_if_exists(filepath: str | None) -> None:
     path = Path(filepath.lstrip("/"))
     if path.exists() and path.is_file():
         path.unlink()
+
+
+def revoke_user_refresh_tokens(db: Session, user_id: int) -> None:
+    db.query(RefreshToken).filter(
+        RefreshToken.user_id == user_id,
+        RefreshToken.is_revoked == False,
+    ).update(
+        {"is_revoked": True},
+        synchronize_session=False,
+    )
+
+
+def get_topic_or_404(db: Session, topic_id: int) -> Topic:
+    topic = db.query(Topic).filter(Topic.id == topic_id).first()
+    if not topic:
+        raise HTTPException(status_code=404, detail="Topic not found")
+    return topic
 
 
 @router.get("/users")
@@ -277,6 +307,13 @@ def delete_question_admin(
     delete_file_if_exists(question.audio_url)
     delete_file_if_exists(question.image_url)
 
+    db.query(TestAttemptAnswer).filter(
+        TestAttemptAnswer.question_id == question_id
+    ).delete(synchronize_session=False)
+    db.query(UserBookmark).filter(
+        UserBookmark.question_id == question_id
+    ).delete(synchronize_session=False)
+
     db.delete(question)
     db.commit()
 
@@ -348,6 +385,217 @@ def admin_reset_user_password(
         raise HTTPException(status_code=404, detail="User not found")
 
     user.password_hash = hash_password(new_password)
+    revoke_user_refresh_tokens(db, user.id)
     db.commit()
 
     return {"message": "Password reset successfully"}
+
+
+@router.delete("/users/{user_id}")
+def delete_user_admin(
+    user_id: int,
+    db: Session = Depends(get_db),
+    admin: User = Depends(require_admin),
+):
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    if user.id == admin.id:
+        raise HTTPException(status_code=400, detail="You cannot delete your own admin account")
+
+    attempts = db.query(TestAttempt).filter(TestAttempt.user_id == user_id).all()
+    attempt_ids = [attempt.id for attempt in attempts]
+
+    if attempt_ids:
+        db.query(TestAttemptAnswer).filter(
+            TestAttemptAnswer.attempt_id.in_(attempt_ids)
+        ).delete(synchronize_session=False)
+
+    db.query(TestAttempt).filter(TestAttempt.user_id == user_id).delete(synchronize_session=False)
+    db.query(UserBookmark).filter(UserBookmark.user_id == user_id).delete(synchronize_session=False)
+    db.query(UserStudiedWord).filter(UserStudiedWord.user_id == user_id).delete(synchronize_session=False)
+    db.query(UserProgress).filter(UserProgress.user_id == user_id).delete(synchronize_session=False)
+    db.query(RefreshToken).filter(RefreshToken.user_id == user_id).delete(synchronize_session=False)
+
+    db.delete(user)
+    db.commit()
+
+    return {"message": "User deleted successfully", "user_id": user_id}
+
+
+# =================================================================
+# QUẢN LÝ CHỦ ĐỀ (TOPICS) DÀNH CHO ADMIN
+# =================================================================
+
+# =================================================================
+# QUẢN LÝ CHỦ ĐỀ (TOPICS) DÀNH CHO ADMIN
+# =================================================================
+
+@router.post("/topics")
+def create_topic_admin(
+    name: str = Form(...),
+    description: str | None = Form(default=None),
+    image: UploadFile | None = File(default=None),
+    db: Session = Depends(get_db),
+    admin: User = Depends(require_admin),
+):
+    image_url = None
+    existing_topic = db.query(Topic).filter(Topic.name == name).first()
+    if existing_topic:
+        raise HTTPException(status_code=400, detail="Topic already exists")
+
+    if image is not None:
+        saved_image_path = save_upload_file(
+            image,
+            IMAGE_UPLOAD_DIR,
+            ["image/jpeg", "image/jpg", "image/png", "image/webp"],
+        )
+        image_url = f"/{saved_image_path}"
+
+    topic = Topic(
+        name=name,
+        description=description,
+        image_url=image_url
+    )
+    db.add(topic)
+    db.commit()
+    db.refresh(topic)
+    
+    return {"message": "Topic created successfully", "id": topic.id}
+
+@router.put("/topics/{topic_id}")
+def update_topic_admin(
+    topic_id: int,
+    name: str = Form(...),
+    description: str | None = Form(default=None),
+    image: UploadFile | None = File(default=None),
+    db: Session = Depends(get_db),
+    admin: User = Depends(require_admin),
+):
+    topic = get_topic_or_404(db, topic_id)
+    existing_topic = (
+        db.query(Topic)
+        .filter(Topic.name == name, Topic.id != topic_id)
+        .first()
+    )
+    if existing_topic:
+        raise HTTPException(status_code=400, detail="Topic already exists")
+    
+    topic.name = name
+    topic.description = description
+    
+    if image is not None:
+        delete_file_if_exists(topic.image_url)
+        saved_image_path = save_upload_file(
+            image,
+            IMAGE_UPLOAD_DIR,
+            ["image/jpeg", "image/jpg", "image/png", "image/webp"],
+        )
+        topic.image_url = f"/{saved_image_path}"
+
+    db.commit()
+    db.refresh(topic)
+    return {"message": "Topic updated successfully"}
+
+@router.delete("/topics/{topic_id}")
+def delete_topic_admin(
+    topic_id: int,
+    db: Session = Depends(get_db),
+    admin: User = Depends(require_admin),
+):
+    topic = db.query(Topic).filter(Topic.id == topic_id).first()
+    if not topic:
+        raise HTTPException(status_code=404, detail="Topic not found")
+
+    words_count = db.query(VocabularyWord).filter(
+        VocabularyWord.topic_id == topic_id
+    ).count()
+    if words_count > 0:
+        raise HTTPException(
+            status_code=400,
+            detail="Cannot delete topic while it still contains vocabulary words",
+        )
+    
+    delete_file_if_exists(topic.image_url)
+    db.delete(topic)
+    db.commit()
+    return {"message": "Topic deleted successfully"}
+
+
+# =================================================================
+# QUẢN LÝ TỪ VỰNG (VOCABULARY) DÀNH CHO ADMIN
+# =================================================================
+
+@router.post("/vocabulary")
+def create_word_admin(
+    payload: VocabularyCreate,
+    db: Session = Depends(get_db),
+    admin: User = Depends(require_admin), 
+):
+    existing = db.query(VocabularyWord).filter(VocabularyWord.word == payload.word).first()
+    if existing:
+        raise HTTPException(status_code=400, detail="Word already exists")
+
+    if payload.topic_id is not None:
+        get_topic_or_404(db, payload.topic_id)
+
+    word = VocabularyWord(
+        word=payload.word,
+        meaning=payload.meaning,
+        example=payload.example,
+        topic_id=payload.topic_id 
+    )
+    db.add(word)
+    db.commit()
+    db.refresh(word)
+
+    return {"message": "Word created successfully", "id": word.id}
+
+@router.put("/vocabulary/{word_id}")
+def update_word_admin(
+    word_id: int,
+    payload: VocabularyUpdatePayload,
+    db: Session = Depends(get_db),
+    admin: User = Depends(require_admin),
+):
+    word_db = db.query(VocabularyWord).filter(VocabularyWord.id == word_id).first()
+    if not word_db:
+        raise HTTPException(status_code=404, detail="Word not found")
+
+    if payload.word is not None:
+        existing = db.query(VocabularyWord).filter(VocabularyWord.word == payload.word, VocabularyWord.id != word_id).first()
+        if existing:
+            raise HTTPException(status_code=400, detail="Word already exists")
+        word_db.word = payload.word
+        
+    if payload.meaning is not None:
+        word_db.meaning = payload.meaning
+    if payload.example is not None:
+        word_db.example = payload.example
+    if payload.topic_id is not None:
+        get_topic_or_404(db, payload.topic_id)
+        word_db.topic_id = payload.topic_id
+
+    db.commit()
+    db.refresh(word_db)
+    
+    return {"message": "Word updated successfully", "id": word_db.id}
+
+@router.delete("/vocabulary/{word_id}")
+def delete_word_admin(
+    word_id: int,
+    db: Session = Depends(get_db),
+    admin: User = Depends(require_admin),
+):
+    word = db.query(VocabularyWord).filter(VocabularyWord.id == word_id).first()
+    if not word:
+        raise HTTPException(status_code=404, detail="Word not found")
+
+    # Xóa lịch sử học từ này của mọi User trước để tránh lỗi ForeignKey
+    db.query(UserStudiedWord).filter(UserStudiedWord.word_id == word_id).delete()
+    
+    db.delete(word)
+    db.commit()
+
+    return {"message": "Word deleted successfully"}

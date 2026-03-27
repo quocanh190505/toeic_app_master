@@ -30,6 +30,10 @@ class AdminService {
     );
   }
 
+  Future<void> deleteUser(int userId) async {
+    await _dio.delete('/admin/users/$userId');
+  }
+
   Future<List<Map<String, dynamic>>> getQuestions({int? part}) async {
     final response = await _dio.get(
       '/admin/questions',

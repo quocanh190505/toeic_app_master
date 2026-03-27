@@ -1,5 +1,6 @@
 class ApiConstants {
   static const String baseUrl = 'http://10.0.2.2:8000';
+  static const String uploadsBaseUrl = '$baseUrl/uploads';
 
   static const String login = '$baseUrl/auth/login';
   static const String register = '$baseUrl/auth/register';
@@ -30,4 +31,12 @@ class ApiConstants {
 
   static String studyWord(int wordId) =>
       '$baseUrl/vocabulary/$wordId/study';
+
+  static String uploadUrl(String? relativePath) {
+    if (relativePath == null || relativePath.isEmpty) return '';
+    if (relativePath.startsWith('http://') || relativePath.startsWith('https://')) {
+      return relativePath;
+    }
+    return '$baseUrl$relativePath';
+  }
 }

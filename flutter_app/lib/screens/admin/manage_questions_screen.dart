@@ -63,7 +63,7 @@ class _ManageQuestionsScreenState extends State<ManageQuestionsScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Quản lý Câu hỏi'),
+        title: const Text('Quản lý câu hỏi'),
         actions: [
           IconButton(
             onPressed: () async {
