@@ -46,6 +46,11 @@ class AdminService {
 
   Future<void> createQuestion({
     required int part,
+    String? section,
+    String? groupKey,
+    int questionOrder = 1,
+    String? instructions,
+    String? sharedContent,
     required String content,
     required String optionA,
     required String optionB,
@@ -53,11 +58,20 @@ class AdminService {
     required String optionD,
     required String correctAnswer,
     String? explanation,
+    String? sharedImageUrl,
+    String? imageUrl,
+    String? sharedAudioPath,
+    String? sharedImagePath,
     String? audioPath,
     String? imagePath,
   }) async {
     final formData = FormData.fromMap({
       'part': part,
+      'section': section ?? (part <= 4 ? 'listening' : 'reading'),
+      'group_key': groupKey ?? '',
+      'question_order': questionOrder,
+      'instructions': instructions ?? '',
+      'shared_content': sharedContent ?? '',
       'content': content,
       'option_a': optionA,
       'option_b': optionB,
@@ -65,6 +79,18 @@ class AdminService {
       'option_d': optionD,
       'correct_answer': correctAnswer,
       'explanation': explanation ?? '',
+      'shared_image_url': sharedImageUrl ?? '',
+      'image_url': imageUrl ?? '',
+      if (sharedAudioPath != null && sharedAudioPath.isNotEmpty)
+        'shared_audio': await MultipartFile.fromFile(
+          sharedAudioPath,
+          filename: sharedAudioPath.split('/').last,
+        ),
+      if (sharedImagePath != null && sharedImagePath.isNotEmpty)
+        'shared_image': await MultipartFile.fromFile(
+          sharedImagePath,
+          filename: sharedImagePath.split('/').last,
+        ),
       if (audioPath != null && audioPath.isNotEmpty)
         'audio': await MultipartFile.fromFile(
           audioPath,
@@ -83,6 +109,11 @@ class AdminService {
   Future<void> updateQuestion({
     required int questionId,
     required int part,
+    String? section,
+    String? groupKey,
+    int questionOrder = 1,
+    String? instructions,
+    String? sharedContent,
     required String content,
     required String optionA,
     required String optionB,
@@ -90,11 +121,20 @@ class AdminService {
     required String optionD,
     required String correctAnswer,
     String? explanation,
+    String? sharedImageUrl,
+    String? imageUrl,
+    String? sharedAudioPath,
+    String? sharedImagePath,
     String? audioPath,
     String? imagePath,
   }) async {
     final formData = FormData.fromMap({
       'part': part,
+      'section': section ?? (part <= 4 ? 'listening' : 'reading'),
+      'group_key': groupKey ?? '',
+      'question_order': questionOrder,
+      'instructions': instructions ?? '',
+      'shared_content': sharedContent ?? '',
       'content': content,
       'option_a': optionA,
       'option_b': optionB,
@@ -102,6 +142,18 @@ class AdminService {
       'option_d': optionD,
       'correct_answer': correctAnswer,
       'explanation': explanation ?? '',
+      'shared_image_url': sharedImageUrl ?? '',
+      'image_url': imageUrl ?? '',
+      if (sharedAudioPath != null && sharedAudioPath.isNotEmpty)
+        'shared_audio': await MultipartFile.fromFile(
+          sharedAudioPath,
+          filename: sharedAudioPath.split('/').last,
+        ),
+      if (sharedImagePath != null && sharedImagePath.isNotEmpty)
+        'shared_image': await MultipartFile.fromFile(
+          sharedImagePath,
+          filename: sharedImagePath.split('/').last,
+        ),
       if (audioPath != null && audioPath.isNotEmpty)
         'audio': await MultipartFile.fromFile(
           audioPath,

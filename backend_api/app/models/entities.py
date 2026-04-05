@@ -22,6 +22,13 @@ class Question(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     part = Column(Integer, nullable=False, index=True)
+    section = Column(String(20), nullable=True, index=True)
+    group_key = Column(String(100), nullable=True, index=True)
+    question_order = Column(Integer, nullable=False, default=1, server_default="1")
+    instructions = Column(Text, nullable=True)
+    shared_content = Column(Text, nullable=True)
+    shared_audio_url = Column(String(500), nullable=True)
+    shared_image_url = Column(String(500), nullable=True)
     content = Column(Text, nullable=False)
     option_a = Column(String(255), nullable=False)
     option_b = Column(String(255), nullable=False)

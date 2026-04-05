@@ -17,7 +17,7 @@ class ToeicApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'TOEIC Master',
+      title: 'TOEIC MASTER PRO',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.lightTheme,
       home: const SplashGate(),
@@ -52,7 +52,7 @@ class SplashGate extends StatelessWidget {
         }
 
         if (user.role.toLowerCase() == 'admin') {
-          return  const AdminScreen();
+          return const AdminScreen();
         }
 
         return const HomeScreen();

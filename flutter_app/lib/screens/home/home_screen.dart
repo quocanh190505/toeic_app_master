@@ -4,6 +4,7 @@ import '../../core/theme/app_theme.dart';
 import '../../models/user_model.dart';
 import '../../services/app_data_service.dart';
 import '../../services/auth_service.dart';
+import '../../widgets/ptit_logo.dart';
 import '../auth/login_screen.dart';
 import '../history/history_screen.dart';
 import '../leaderboard/leaderboard_screen.dart';
@@ -256,7 +257,8 @@ class _HomeDashboardTabState extends State<HomeDashboardTab> {
     if (errorMessage != null) {
       return Scaffold(
         appBar: AppBar(
-          title: const Text('TOEIC Master'),
+          centerTitle: true,
+          title: const Text('TOEIC MASTER PRO'),
           actions: [
             IconButton(
               onPressed: logout,
@@ -294,7 +296,15 @@ class _HomeDashboardTabState extends State<HomeDashboardTab> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('TOEIC Master'),
+        centerTitle: true,
+        title: const Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            PtitLogo(width: 54, showSubtitle: false),
+            SizedBox(width: 10),
+            Text('TOEIC MASTER PRO'),
+          ],
+        ),
         actions: [
           IconButton(
             onPressed: logout,
@@ -341,10 +351,35 @@ class _HomeDashboardTabState extends State<HomeDashboardTab> {
                   ],
                 ),
                 child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                  crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
+                    Center(
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 14,
+                          vertical: 10,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(20),
+                          boxShadow: const [
+                            BoxShadow(
+                              color: Color(0x100F172A),
+                              blurRadius: 12,
+                              offset: Offset(0, 6),
+                            ),
+                          ],
+                        ),
+                        child: const PtitLogo(
+                          width: 92,
+                          showSubtitle: false,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 10),
                     Text(
                       'Xin chào, ${user?.fullName ?? ''}',
+                      textAlign: TextAlign.center,
                       style: const TextStyle(
                         color: Colors.white,
                         fontSize: 26,
@@ -354,6 +389,7 @@ class _HomeDashboardTabState extends State<HomeDashboardTab> {
                     const SizedBox(height: 8),
                     Text(
                       'Mục tiêu hiện tại: ${user?.targetScore ?? 0} điểm TOEIC',
+                      textAlign: TextAlign.center,
                       style: const TextStyle(
                         color: Color(0xFFDCF2FF),
                         fontSize: 14,

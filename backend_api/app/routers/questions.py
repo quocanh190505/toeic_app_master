@@ -49,6 +49,26 @@ MINI_TEST_DISTRIBUTION = {
     7: 8,
 }
 
+MINI_TEST_PART_QUESTION_COUNT = {
+    1: 10,
+    2: 10,
+    3: 9,
+    4: 9,
+    5: 10,
+    6: 10,
+    7: 9,
+}
+
+FULL_TEST_GROUP_SIZE = {
+    1: 1,
+    2: 1,
+    3: 3,
+    4: 3,
+    5: 1,
+    6: 2,
+    7: 3,
+}
+
 
 def ensure_progress(db: Session, user_id: int):
     progress = db.query(UserProgress).filter(UserProgress.user_id == user_id).first()
@@ -69,10 +89,21 @@ def ensure_progress(db: Session, user_id: int):
     return progress
 
 
+def infer_section_from_part(part: int) -> str:
+    return "listening" if part <= 4 else "reading"
+
+
 def serialize_question_public(q: Question):
     return {
         "id": q.id,
         "part": q.part,
+        "section": q.section or infer_section_from_part(q.part),
+        "group_key": q.group_key,
+        "question_order": q.question_order,
+        "instructions": q.instructions,
+        "shared_content": q.shared_content,
+        "shared_audio_url": q.shared_audio_url,
+        "shared_image_url": q.shared_image_url,
         "content": q.content,
         "options": {
             "A": q.option_a,
@@ -98,6 +129,202 @@ def build_part_stats_response(part_stats):
             "accuracy": accuracy,
         }
     return response
+
+
+def chunk_questions(questions, chunk_size: int):
+    return [
+        questions[index : index + chunk_size]
+        for index in range(0, len(questions), chunk_size)
+        if len(questions[index : index + chunk_size]) == chunk_size
+    ]
+
+
+def build_question_groups(questions: list[Question]) -> list[list[Question]]:
+    grouped: dict[str, list[Question]] = {}
+    standalone: list[list[Question]] = []
+
+    for question in questions:
+        key = (question.group_key or "").strip()
+        if key:
+            grouped.setdefault(key, []).append(question)
+        else:
+            standalone.append([question])
+
+    grouped_values = list(grouped.values())
+    for group in grouped_values:
+        group.sort(key=lambda item: (item.question_order, item.id))
+
+    grouped_values.sort(key=lambda group: (group[0].id, group[0].question_order))
+    standalone.sort(key=lambda group: group[0].id)
+
+    return grouped_values + standalone
+
+
+def pick_question_groups_exactly(
+    available_groups: list[list[Question]],
+    target_question_count: int,
+    attempts: int = 200,
+) -> list[list[Question]] | None:
+    for _ in range(attempts):
+        shuffled_groups = available_groups[:]
+        random.shuffle(shuffled_groups)
+
+        selected_groups: list[list[Question]] = []
+        remaining = target_question_count
+
+        for group in shuffled_groups:
+            group_size = len(group)
+            if group_size > remaining:
+                continue
+
+            selected_groups.append(group)
+            remaining -= group_size
+
+            if remaining == 0:
+                selected_groups.sort(key=lambda group: group[0].id)
+                return selected_groups
+
+    return None
+
+
+def select_full_test_questions(db: Session):
+    selected = []
+
+    for part, count in FULL_TEST_DISTRIBUTION.items():
+        group_size = FULL_TEST_GROUP_SIZE[part]
+        ordered_questions = (
+            db.query(Question)
+            .filter(Question.part == part)
+            .order_by(Question.id.asc())
+            .all()
+        )
+
+        if len(ordered_questions) < count:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Not enough questions for part {part}. Need at least {count} questions.",
+            )
+
+        has_explicit_groups = any(
+            (question.group_key or "").strip() for question in ordered_questions
+        )
+
+        if has_explicit_groups:
+            available_groups = build_question_groups(ordered_questions)
+            picked_groups = pick_question_groups_exactly(available_groups, count)
+
+            if picked_groups is None:
+                raise HTTPException(
+                    status_code=400,
+                    detail=(
+                        f"Not enough valid grouped data for part {part}. "
+                        f"Need groups that sum exactly to {count} questions."
+                    ),
+                )
+        else:
+            available_groups = chunk_questions(ordered_questions, group_size)
+            required_group_count = count // group_size
+
+            if required_group_count * group_size != count:
+                raise HTTPException(
+                    status_code=500,
+                    detail=f"Invalid full test distribution for part {part}.",
+                )
+
+            if len(available_groups) < required_group_count:
+                raise HTTPException(
+                    status_code=400,
+                    detail=(
+                        f"Not enough grouped questions for part {part}. "
+                        f"Need at least {required_group_count} groups of {group_size}."
+                    ),
+                )
+
+            picked_groups = random.sample(available_groups, required_group_count)
+            picked_groups.sort(key=lambda group: group[0].id)
+
+        for group in picked_groups:
+            selected.extend(group)
+
+    return selected
+
+
+def select_structured_questions_for_part(
+    db: Session,
+    *,
+    part: int,
+    target_question_count: int,
+) -> list[Question]:
+    group_size = FULL_TEST_GROUP_SIZE[part]
+    ordered_questions = (
+        db.query(Question)
+        .filter(Question.part == part)
+        .order_by(Question.id.asc())
+        .all()
+    )
+
+    if not ordered_questions:
+        raise HTTPException(
+            status_code=400,
+            detail=f"No questions available for part {part}.",
+        )
+
+    effective_target_question_count = min(
+        target_question_count,
+        len(ordered_questions),
+    )
+
+    has_explicit_groups = any(
+        (question.group_key or "").strip() for question in ordered_questions
+    )
+
+    if has_explicit_groups:
+        available_groups = build_question_groups(ordered_questions)
+        picked_groups = pick_question_groups_exactly(
+            available_groups,
+            effective_target_question_count,
+        )
+        if picked_groups is None:
+            # Fallback for mini tests: return as many full groups as currently available
+            # instead of blocking the user when a part has fewer questions than target.
+            running_total = 0
+            picked_groups = []
+            for group in available_groups:
+                group_size = len(group)
+                if running_total + group_size > effective_target_question_count:
+                    continue
+                picked_groups.append(group)
+                running_total += group_size
+
+            if not picked_groups:
+                picked_groups = available_groups[:1]
+    else:
+        available_groups = chunk_questions(ordered_questions, group_size)
+        required_group_count = effective_target_question_count // group_size
+
+        if required_group_count * group_size != effective_target_question_count:
+            raise HTTPException(
+                status_code=500,
+                detail=f"Invalid mini test distribution for part {part}.",
+            )
+
+        if not available_groups:
+            available_groups = [[question] for question in ordered_questions]
+            required_group_count = min(
+                effective_target_question_count,
+                len(available_groups),
+            )
+        else:
+            required_group_count = min(required_group_count, len(available_groups))
+
+        picked_groups = random.sample(available_groups, required_group_count)
+        picked_groups.sort(key=lambda group: group[0].id)
+
+    selected: list[Question] = []
+    for group in picked_groups:
+        selected.extend(group)
+
+    return selected
 
 
 def delete_question_dependencies(db: Session, question_id: int) -> None:
@@ -140,15 +367,15 @@ def get_mini_test(
     current_user: User = Depends(get_current_user),
 ):
     if part is not None:
-        questions = db.query(Question).filter(Question.part == part).all()
+        target_count = MINI_TEST_PART_QUESTION_COUNT.get(part)
+        if target_count is None:
+            raise HTTPException(status_code=400, detail="Invalid part for mini test")
 
-        if len(questions) < 10:
-            raise HTTPException(
-                status_code=400,
-                detail=f"Not enough questions for part {part}. Need at least 10 questions.",
-            )
-
-        selected = random.sample(questions, 10)
+        selected = select_structured_questions_for_part(
+            db,
+            part=part,
+            target_question_count=target_count,
+        )
 
         return {
             "test_type": "mini",
@@ -185,24 +412,15 @@ def get_full_test(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    selected = []
-
-    for p, count in FULL_TEST_DISTRIBUTION.items():
-        part_questions = db.query(Question).filter(Question.part == p).all()
-
-        if len(part_questions) < count:
-            raise HTTPException(
-                status_code=400,
-                detail=f"Not enough questions for part {p}. Need at least {count} questions.",
-            )
-
-        selected.extend(random.sample(part_questions, count))
-
-    random.shuffle(selected)
+    selected = select_full_test_questions(db)
 
     return {
         "test_type": "full",
         "total_questions": len(selected),
+        "sections": [
+            {"key": "listening", "title": "Bài nghe", "parts": [1, 2, 3, 4]},
+            {"key": "reading", "title": "Bài đọc", "parts": [5, 6, 7]},
+        ],
         "questions": [serialize_question_public(q) for q in selected],
     }
 
@@ -270,6 +488,13 @@ def submit_questions(
             {
                 "question_id": q.id,
                 "part": q.part,
+                "section": q.section or infer_section_from_part(q.part),
+                "group_key": q.group_key,
+                "question_order": q.question_order,
+                "instructions": q.instructions,
+                "shared_content": q.shared_content,
+                "shared_audio_url": q.shared_audio_url,
+                "shared_image_url": q.shared_image_url,
                 "content": q.content,
                 "options": {
                     "A": q.option_a,
@@ -395,6 +620,13 @@ def get_attempt_detail(
             {
                 "question_id": question.id,
                 "part": question.part,
+                "section": question.section or infer_section_from_part(question.part),
+                "group_key": question.group_key,
+                "question_order": question.question_order,
+                "instructions": question.instructions,
+                "shared_content": question.shared_content,
+                "shared_audio_url": question.shared_audio_url,
+                "shared_image_url": question.shared_image_url,
                 "content": question.content,
                 "options": {
                     "A": question.option_a,
@@ -500,6 +732,13 @@ def create_question(
 ):
     question = Question(
         part=payload.part,
+        section=payload.section or infer_section_from_part(payload.part),
+        group_key=payload.group_key,
+        question_order=payload.question_order,
+        instructions=payload.instructions,
+        shared_content=payload.shared_content,
+        shared_audio_url=payload.shared_audio_url,
+        shared_image_url=payload.shared_image_url,
         content=payload.content,
         option_a=payload.option_a,
         option_b=payload.option_b,

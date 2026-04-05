@@ -35,6 +35,13 @@ CREATE TABLE users (
 CREATE TABLE questions (
     id INT PRIMARY KEY AUTO_INCREMENT,
     part INT NOT NULL,
+    section VARCHAR(20) NULL,
+    group_key VARCHAR(100) NULL,
+    question_order INT NOT NULL DEFAULT 1,
+    instructions TEXT NULL,
+    shared_content TEXT NULL,
+    shared_audio_url VARCHAR(500) NULL,
+    shared_image_url VARCHAR(500) NULL,
     content TEXT NOT NULL,
     option_a VARCHAR(255) NOT NULL,
     option_b VARCHAR(255) NOT NULL,
@@ -45,7 +52,9 @@ CREATE TABLE questions (
     audio_url VARCHAR(500) NULL,
     image_url VARCHAR(500) NULL,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    INDEX idx_questions_part (part)
+    INDEX idx_questions_part (part),
+    INDEX idx_questions_section (section),
+    INDEX idx_questions_group_key (group_key)
 );
 
 CREATE TABLE user_progress (
@@ -454,4 +463,3 @@ ALTER TABLE questions AUTO_INCREMENT = 201;
 ALTER TABLE test_attempts AUTO_INCREMENT = 2;
 
 SET FOREIGN_KEY_CHECKS = 1;
-

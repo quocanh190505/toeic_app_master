@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../core/theme/app_theme.dart';
 import '../../services/admin_service.dart';
 import 'create_question_screen.dart';
 
@@ -59,6 +60,16 @@ class _ManageQuestionsScreenState extends State<ManageQuestionsScreen> {
     }
   }
 
+  Future<void> _openQuestionForm({Map<String, dynamic>? question}) async {
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => CreateQuestionScreen(question: question),
+      ),
+    );
+    await loadQuestions();
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -66,13 +77,7 @@ class _ManageQuestionsScreenState extends State<ManageQuestionsScreen> {
         title: const Text('Quản lý câu hỏi'),
         actions: [
           IconButton(
-            onPressed: () async {
-              await Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => const CreateQuestionScreen()),
-              );
-              await loadQuestions();
-            },
+            onPressed: () => _openQuestionForm(),
             icon: const Icon(Icons.add),
           ),
         ],
@@ -82,7 +87,7 @@ class _ManageQuestionsScreenState extends State<ManageQuestionsScreen> {
           Padding(
             padding: const EdgeInsets.all(16),
             child: DropdownButtonFormField<int?>(
-              value: selectedPart,
+              initialValue: selectedPart,
               decoration: const InputDecoration(labelText: 'Lọc theo Part'),
               items: const [
                 DropdownMenuItem<int?>(value: null, child: Text('Tất cả')),
@@ -115,19 +120,53 @@ class _ManageQuestionsScreenState extends State<ManageQuestionsScreen> {
                               vertical: 8,
                             ),
                             child: ListTile(
-                              title: Text('Part ${q['part']} - ${q['content']}'),
+                              title:
+                                  Text('Part ${q['part']} - ${q['content']}'),
                               subtitle: Text(
                                 'A. ${q['option_a']}\n'
                                 'B. ${q['option_b']}\n'
                                 'Đáp án: ${q['correct_answer']}',
                               ),
                               isThreeLine: true,
-                              trailing: IconButton(
-                                onPressed: () => deleteQuestion(q['id']),
-                                icon: const Icon(
-                                  Icons.delete,
-                                  color: Colors.red,
-                                ),
+                              leading: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  if ((q['audio_url'] ?? '')
+                                      .toString()
+                                      .isNotEmpty)
+                                    const Icon(
+                                      Icons.audiotrack_rounded,
+                                      color: AppTheme.primary,
+                                    ),
+                                  if ((q['image_url'] ?? '')
+                                      .toString()
+                                      .isNotEmpty)
+                                    const Icon(
+                                      Icons.image_outlined,
+                                      color: AppTheme.secondary,
+                                    ),
+                                ],
+                              ),
+                              trailing: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  IconButton(
+                                    onPressed: () => _openQuestionForm(
+                                      question: q,
+                                    ),
+                                    icon: const Icon(
+                                      Icons.edit,
+                                      color: Colors.blue,
+                                    ),
+                                  ),
+                                  IconButton(
+                                    onPressed: () => deleteQuestion(q['id']),
+                                    icon: const Icon(
+                                      Icons.delete,
+                                      color: Colors.red,
+                                    ),
+                                  ),
+                                ],
                               ),
                             ),
                           );

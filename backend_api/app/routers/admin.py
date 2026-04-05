@@ -33,6 +33,10 @@ AUDIO_UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 IMAGE_UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 
 
+def infer_section_from_part(part: int) -> str:
+    return "listening" if part <= 4 else "reading"
+
+
 def save_upload_file(
     file: UploadFile,
     folder: Path,
@@ -61,6 +65,38 @@ def delete_file_if_exists(filepath: str | None) -> None:
     path = Path(filepath.lstrip("/"))
     if path.exists() and path.is_file():
         path.unlink()
+
+
+def delete_question_media_if_unused(
+    db: Session,
+    *,
+    direct_audio_url: str | None = None,
+    direct_image_url: str | None = None,
+    shared_audio_url: str | None = None,
+    shared_image_url: str | None = None,
+    exclude_question_id: int | None = None,
+) -> None:
+    filters = []
+    if exclude_question_id is not None:
+        filters.append(Question.id != exclude_question_id)
+
+    candidates = [
+        (direct_audio_url, Question.audio_url),
+        (direct_image_url, Question.image_url),
+        (shared_audio_url, Question.shared_audio_url),
+        (shared_image_url, Question.shared_image_url),
+    ]
+
+    for filepath, column in candidates:
+        if not filepath:
+            continue
+
+        query = db.query(Question).filter(column == filepath)
+        for condition in filters:
+            query = query.filter(condition)
+
+        if query.first() is None:
+            delete_file_if_exists(filepath)
 
 
 def revoke_user_refresh_tokens(db: Session, user_id: int) -> None:
@@ -115,6 +151,13 @@ def list_questions_admin(
         {
             "id": q.id,
             "part": q.part,
+            "section": q.section or infer_section_from_part(q.part),
+            "group_key": q.group_key,
+            "question_order": q.question_order,
+            "instructions": q.instructions,
+            "shared_content": q.shared_content,
+            "shared_audio_url": q.shared_audio_url,
+            "shared_image_url": q.shared_image_url,
             "content": q.content,
             "option_a": q.option_a,
             "option_b": q.option_b,
@@ -132,6 +175,11 @@ def list_questions_admin(
 @router.post("/questions")
 def create_question_admin(
     part: int = Form(...),
+    section: str | None = Form(default=None),
+    group_key: str | None = Form(default=None),
+    question_order: int = Form(default=1),
+    instructions: str | None = Form(default=None),
+    shared_content: str | None = Form(default=None),
     content: str = Form(...),
     option_a: str = Form(...),
     option_b: str = Form(...),
@@ -139,6 +187,10 @@ def create_question_admin(
     option_d: str = Form(...),
     correct_answer: str = Form(...),
     explanation: str | None = Form(default=None),
+    shared_image_url: str | None = Form(default=None),
+    image_url: str | None = Form(default=None),
+    shared_audio: UploadFile | None = File(default=None),
+    shared_image: UploadFile | None = File(default=None),
     audio: UploadFile | None = File(default=None),
     image: UploadFile | None = File(default=None),
     db: Session = Depends(get_db),
@@ -147,8 +199,16 @@ def create_question_admin(
     if correct_answer not in ["A", "B", "C", "D"]:
         raise HTTPException(status_code=400, detail="correct_answer must be A, B, C, or D")
 
+    resolved_section = (section or infer_section_from_part(part)).strip().lower()
+    if resolved_section not in ["listening", "reading"]:
+        raise HTTPException(status_code=400, detail="section must be listening or reading")
+    if question_order < 1:
+        raise HTTPException(status_code=400, detail="question_order must be at least 1")
+
     audio_url = None
-    image_url = None
+    direct_image_url = (image_url or "").strip() or None
+    shared_audio_url = None
+    direct_shared_image_url = (shared_image_url or "").strip() or None
 
     if audio is not None:
         saved_audio_path = save_upload_file(
@@ -166,6 +226,22 @@ def create_question_admin(
         )
         audio_url = f"/{saved_audio_path}"
 
+    if shared_audio is not None:
+        saved_shared_audio_path = save_upload_file(
+            shared_audio,
+            AUDIO_UPLOAD_DIR,
+            [
+                "audio/mpeg",
+                "audio/mp3",
+                "audio/wav",
+                "audio/x-wav",
+                "audio/aac",
+                "audio/ogg",
+                "audio/mp4",
+            ],
+        )
+        shared_audio_url = f"/{saved_shared_audio_path}"
+
     if image is not None:
         saved_image_path = save_upload_file(
             image,
@@ -177,10 +253,30 @@ def create_question_admin(
                 "image/webp",
             ],
         )
-        image_url = f"/{saved_image_path}"
+        direct_image_url = f"/{saved_image_path}"
+
+    if shared_image is not None:
+        saved_shared_image_path = save_upload_file(
+            shared_image,
+            IMAGE_UPLOAD_DIR,
+            [
+                "image/jpeg",
+                "image/jpg",
+                "image/png",
+                "image/webp",
+            ],
+        )
+        direct_shared_image_url = f"/{saved_shared_image_path}"
 
     question = Question(
         part=part,
+        section=resolved_section,
+        group_key=(group_key or "").strip() or None,
+        question_order=question_order,
+        instructions=(instructions or "").strip() or None,
+        shared_content=(shared_content or "").strip() or None,
+        shared_audio_url=shared_audio_url,
+        shared_image_url=direct_shared_image_url,
         content=content,
         option_a=option_a,
         option_b=option_b,
@@ -188,7 +284,7 @@ def create_question_admin(
         option_d=option_d,
         correct_answer=correct_answer,
         audio_url=audio_url,
-        image_url=image_url,
+        image_url=direct_image_url,
         explanation=explanation,
     )
 
@@ -200,6 +296,13 @@ def create_question_admin(
         "message": "Question created successfully",
         "id": question.id,
         "part": question.part,
+        "section": question.section,
+        "group_key": question.group_key,
+        "question_order": question.question_order,
+        "instructions": question.instructions,
+        "shared_content": question.shared_content,
+        "shared_audio_url": question.shared_audio_url,
+        "shared_image_url": question.shared_image_url,
         "content": question.content,
         "option_a": question.option_a,
         "option_b": question.option_b,
@@ -216,6 +319,11 @@ def create_question_admin(
 def update_question_admin(
     question_id: int,
     part: int = Form(...),
+    section: str | None = Form(default=None),
+    group_key: str | None = Form(default=None),
+    question_order: int = Form(default=1),
+    instructions: str | None = Form(default=None),
+    shared_content: str | None = Form(default=None),
     content: str = Form(...),
     option_a: str = Form(...),
     option_b: str = Form(...),
@@ -223,6 +331,10 @@ def update_question_admin(
     option_d: str = Form(...),
     correct_answer: str = Form(...),
     explanation: str | None = Form(default=None),
+    shared_image_url: str | None = Form(default=None),
+    image_url: str | None = Form(default=None),
+    shared_audio: UploadFile | None = File(default=None),
+    shared_image: UploadFile | None = File(default=None),
     audio: UploadFile | None = File(default=None),
     image: UploadFile | None = File(default=None),
     db: Session = Depends(get_db),
@@ -235,7 +347,23 @@ def update_question_admin(
     if not question:
         raise HTTPException(status_code=404, detail="Question not found")
 
+    resolved_section = (section or infer_section_from_part(part)).strip().lower()
+    if resolved_section not in ["listening", "reading"]:
+        raise HTTPException(status_code=400, detail="section must be listening or reading")
+    if question_order < 1:
+        raise HTTPException(status_code=400, detail="question_order must be at least 1")
+
+    old_audio_url = question.audio_url
+    old_image_url = question.image_url
+    old_shared_audio_url = question.shared_audio_url
+    old_shared_image_url = question.shared_image_url
+
     question.part = part
+    question.section = resolved_section
+    question.group_key = (group_key or "").strip() or None
+    question.question_order = question_order
+    question.instructions = (instructions or "").strip() or None
+    question.shared_content = (shared_content or "").strip() or None
     question.content = content
     question.option_a = option_a
     question.option_b = option_b
@@ -243,9 +371,10 @@ def update_question_admin(
     question.option_d = option_d
     question.correct_answer = correct_answer
     question.explanation = explanation
+    direct_image_url = (image_url or "").strip()
+    direct_shared_image_url = (shared_image_url or "").strip()
 
     if audio is not None:
-        delete_file_if_exists(question.audio_url)
         saved_audio_path = save_upload_file(
             audio,
             AUDIO_UPLOAD_DIR,
@@ -262,7 +391,6 @@ def update_question_admin(
         question.audio_url = f"/{saved_audio_path}"
 
     if image is not None:
-        delete_file_if_exists(question.image_url)
         saved_image_path = save_upload_file(
             image,
             IMAGE_UPLOAD_DIR,
@@ -274,14 +402,71 @@ def update_question_admin(
             ],
         )
         question.image_url = f"/{saved_image_path}"
+    elif direct_image_url:
+        question.image_url = direct_image_url
+
+    if shared_audio is not None:
+        saved_shared_audio_path = save_upload_file(
+            shared_audio,
+            AUDIO_UPLOAD_DIR,
+            [
+                "audio/mpeg",
+                "audio/mp3",
+                "audio/wav",
+                "audio/x-wav",
+                "audio/aac",
+                "audio/ogg",
+                "audio/mp4",
+            ],
+        )
+        question.shared_audio_url = f"/{saved_shared_audio_path}"
+
+    if shared_image is not None:
+        saved_shared_image_path = save_upload_file(
+            shared_image,
+            IMAGE_UPLOAD_DIR,
+            [
+                "image/jpeg",
+                "image/jpg",
+                "image/png",
+                "image/webp",
+            ],
+        )
+        question.shared_image_url = f"/{saved_shared_image_path}"
+    elif direct_shared_image_url:
+        question.shared_image_url = direct_shared_image_url
 
     db.commit()
     db.refresh(question)
+
+    delete_question_media_if_unused(
+        db,
+        direct_audio_url=old_audio_url if old_audio_url != question.audio_url else None,
+        direct_image_url=old_image_url if old_image_url != question.image_url else None,
+        shared_audio_url=(
+            old_shared_audio_url
+            if old_shared_audio_url != question.shared_audio_url
+            else None
+        ),
+        shared_image_url=(
+            old_shared_image_url
+            if old_shared_image_url != question.shared_image_url
+            else None
+        ),
+        exclude_question_id=question.id,
+    )
 
     return {
         "message": "Question updated successfully",
         "id": question.id,
         "part": question.part,
+        "section": question.section,
+        "group_key": question.group_key,
+        "question_order": question.question_order,
+        "instructions": question.instructions,
+        "shared_content": question.shared_content,
+        "shared_audio_url": question.shared_audio_url,
+        "shared_image_url": question.shared_image_url,
         "content": question.content,
         "option_a": question.option_a,
         "option_b": question.option_b,
@@ -304,8 +489,10 @@ def delete_question_admin(
     if not question:
         raise HTTPException(status_code=404, detail="Question not found")
 
-    delete_file_if_exists(question.audio_url)
-    delete_file_if_exists(question.image_url)
+    old_audio_url = question.audio_url
+    old_image_url = question.image_url
+    old_shared_audio_url = question.shared_audio_url
+    old_shared_image_url = question.shared_image_url
 
     db.query(TestAttemptAnswer).filter(
         TestAttemptAnswer.question_id == question_id
@@ -316,6 +503,15 @@ def delete_question_admin(
 
     db.delete(question)
     db.commit()
+
+    delete_question_media_if_unused(
+        db,
+        direct_audio_url=old_audio_url,
+        direct_image_url=old_image_url,
+        shared_audio_url=old_shared_audio_url,
+        shared_image_url=old_shared_image_url,
+        exclude_question_id=question_id,
+    )
 
     return {"message": "Question deleted successfully"}
 

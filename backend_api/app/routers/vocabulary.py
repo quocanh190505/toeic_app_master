@@ -95,6 +95,35 @@ def mark_word_studied(
 
     return {"message": "Word marked as studied"}
 
+
+@router.delete("/{word_id}/study")
+def unmark_word_studied(
+    word_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    word = db.query(VocabularyWord).filter(VocabularyWord.id == word_id).first()
+    if not word:
+        raise HTTPException(status_code=404, detail="Word not found")
+
+    existing = db.query(UserStudiedWord).filter(
+        UserStudiedWord.user_id == current_user.id,
+        UserStudiedWord.word_id == word_id,
+    ).first()
+
+    if not existing:
+        return {"message": "Word is not marked as studied"}
+
+    db.delete(existing)
+
+    progress = ensure_progress(db, current_user.id)
+    if progress.studied_words > 0:
+        progress.studied_words -= 1
+
+    db.commit()
+
+    return {"message": "Word unmarked as studied"}
+
 @router.get("/studied/me")
 def my_studied_words(
     db: Session = Depends(get_db),

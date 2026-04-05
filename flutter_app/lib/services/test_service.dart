@@ -9,6 +9,27 @@ class TestService {
 
   static const List<int> validMiniTestParts = [1, 2, 3, 4, 5, 6, 7];
 
+  Map<String, dynamic> _asStringMap(dynamic value, String context) {
+    if (value is Map) {
+      return value.map(
+        (key, val) => MapEntry(key.toString(), val),
+      );
+    }
+    throw Exception('$context không đúng format map: $value');
+  }
+
+  List<QuestionModel> _parseQuestionList(dynamic raw, String context) {
+    if (raw is! List) {
+      throw Exception('$context không phải danh sách câu hỏi: $raw');
+    }
+
+    return raw.asMap().entries.map((entry) {
+      final item = entry.value;
+      final itemMap = _asStringMap(item, '$context tại vị trí ${entry.key}');
+      return QuestionModel.fromJson(itemMap);
+    }).toList();
+  }
+
   void _validateMiniTestPart(int part) {
     if (!validMiniTestParts.contains(part)) {
       throw Exception(
@@ -36,11 +57,7 @@ class TestService {
         throw Exception('Response mini-test thiếu questions: $data');
       }
 
-      final list = data['questions'] as List;
-
-      return list
-          .map((e) => QuestionModel.fromJson(Map<String, dynamic>.from(e)))
-          .toList();
+      return _parseQuestionList(data['questions'], 'Response mini-test');
     } on DioException catch (e) {
       print('MINI TEST URL: ${e.requestOptions.uri}');
       print('MINI TEST STATUS: ${e.response?.statusCode}');
@@ -68,11 +85,7 @@ class TestService {
         throw Exception('Response full-test thiếu questions: $data');
       }
 
-      final list = data['questions'] as List;
-
-      return list
-          .map((e) => QuestionModel.fromJson(Map<String, dynamic>.from(e)))
-          .toList();
+      return _parseQuestionList(data['questions'], 'Response full-test');
     } on DioException catch (e) {
       print('FULL TEST URL: ${e.requestOptions.uri}');
       print('FULL TEST STATUS: ${e.response?.statusCode}');
@@ -107,10 +120,7 @@ class TestService {
         );
       }
 
-      final list = response.data as List;
-      return list
-          .map((e) => QuestionModel.fromJson(Map<String, dynamic>.from(e)))
-          .toList();
+      return _parseQuestionList(response.data, 'Response questions');
     } on DioException catch (e) {
       print('GET QUESTIONS URL: ${e.requestOptions.uri}');
       print('GET QUESTIONS STATUS: ${e.response?.statusCode}');

@@ -21,16 +21,16 @@ class ResultScreen extends StatelessWidget {
 
   Map<String, dynamic> _toMap(dynamic value) {
     if (value is Map<String, dynamic>) return value;
-    if (value is Map) {
-      return Map<String, dynamic>.from(value);
-    }
+    if (value is Map) return Map<String, dynamic>.from(value);
     return {};
   }
 
   List<Map<String, dynamic>> _toListMap(dynamic value) {
     if (value is List) {
       return value
-          .map((e) => e is Map ? Map<String, dynamic>.from(e) : <String, dynamic>{})
+          .map(
+            (e) => e is Map ? Map<String, dynamic>.from(e) : <String, dynamic>{},
+          )
           .toList();
     }
     return [];
@@ -38,11 +38,7 @@ class ResultScreen extends StatelessWidget {
 
   String _formatPercent(dynamic value) {
     final number = _toDouble(value);
-
-    if (number <= 1) {
-      return '${(number * 100).toStringAsFixed(1)}%';
-    }
-
+    if (number <= 1) return '${(number * 100).toStringAsFixed(1)}%';
     return '${number.toStringAsFixed(1)}%';
   }
 
@@ -93,7 +89,7 @@ class ResultScreen extends StatelessWidget {
           style: const TextStyle(fontWeight: FontWeight.w700),
         ),
         subtitle: Text(
-          'Đúng: $correct/$total\nChính xác: ${accuracy.toStringAsFixed(2)}%',
+          'Dung: $correct/$total\nChinh xac: ${accuracy.toStringAsFixed(2)}%',
         ),
       ),
     );
@@ -101,10 +97,17 @@ class ResultScreen extends StatelessWidget {
 
   Widget _resultTile(Map<String, dynamic> item, int index) {
     final isCorrect = item['is_correct'] == true;
-    final content = (item['content'] ?? 'Câu hỏi ${index + 1}').toString();
-    final selectedAnswer = (item['selected_answer'] ?? 'Chưa chọn').toString();
+    final part = _toInt(item['part']);
+    final hidesPart2Content = part == 2;
+    final content = hidesPart2Content
+        ? 'Cau ${index + 1} - Part 2'
+        : (item['content'] ?? 'Cau hoi ${index + 1}').toString();
+    final selectedAnswer = (item['selected_answer'] ?? 'Chua chon').toString();
     final correctAnswer = (item['correct_answer'] ?? '').toString();
     final explanation = (item['explanation'] ?? '').toString();
+    final explanationLabel = hidesPart2Content
+        ? 'An cho Part 2'
+        : (explanation.isEmpty ? 'Khong co' : explanation);
 
     return Card(
       child: ListTile(
@@ -116,9 +119,9 @@ class ResultScreen extends StatelessWidget {
         subtitle: Padding(
           padding: const EdgeInsets.only(top: 8),
           child: Text(
-            'Bạn chọn: $selectedAnswer\n'
-            'Đáp án đúng: $correctAnswer\n'
-            'Giải thích: ${explanation.isEmpty ? "Không có" : explanation}',
+            'Ban chon: $selectedAnswer\n'
+            'Dap an dung: $correctAnswer\n'
+            'Giai thich: $explanationLabel',
           ),
         ),
         trailing: Icon(
@@ -154,7 +157,7 @@ class ResultScreen extends StatelessWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Kết quả'),
+        title: const Text('Ket qua'),
       ),
       body: ListView(
         padding: const EdgeInsets.all(18),
@@ -179,7 +182,7 @@ class ResultScreen extends StatelessWidget {
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  'Đúng $correctCount/$totalQuestions câu',
+                  'Dung $correctCount/$totalQuestions cau',
                   style: const TextStyle(
                     color: Colors.white70,
                     fontSize: 15,
@@ -193,7 +196,7 @@ class ResultScreen extends StatelessWidget {
             children: [
               Expanded(
                 child: _summaryCard(
-                  title: 'Bài đã hoàn thành',
+                  title: 'Bai da hoan thanh',
                   value: '$completedTests',
                   icon: Icons.assignment_turned_in_outlined,
                 ),
@@ -201,7 +204,7 @@ class ResultScreen extends StatelessWidget {
               const SizedBox(width: 12),
               Expanded(
                 child: _summaryCard(
-                  title: 'Điểm cao nhất',
+                  title: 'Diem cao nhat',
                   value: '$highestScore',
                   icon: Icons.emoji_events_outlined,
                 ),
@@ -210,13 +213,13 @@ class ResultScreen extends StatelessWidget {
           ),
           const SizedBox(height: 12),
           _summaryCard(
-            title: 'Tiến độ tổng',
+            title: 'Tien do tong',
             value: overallProgress,
             icon: Icons.show_chart,
           ),
           const SizedBox(height: 20),
           const Text(
-            'Thống kê theo part',
+            'Thong ke theo part',
             style: TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.w800,
@@ -227,7 +230,7 @@ class ResultScreen extends StatelessWidget {
             const Card(
               child: Padding(
                 padding: EdgeInsets.all(16),
-                child: Text('Chưa có thống kê theo part'),
+                child: Text('Chua co thong ke theo part'),
               ),
             )
           else
@@ -237,7 +240,7 @@ class ResultScreen extends StatelessWidget {
             }),
           const SizedBox(height: 20),
           const Text(
-            'Đáp án chi tiết',
+            'Dap an chi tiet',
             style: TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.w800,
@@ -248,7 +251,7 @@ class ResultScreen extends StatelessWidget {
             const Card(
               child: Padding(
                 padding: EdgeInsets.all(16),
-                child: Text('Chưa có dữ liệu đáp án chi tiết'),
+                child: Text('Chua co du lieu dap an chi tiet'),
               ),
             )
           else

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../core/theme/app_theme.dart';
 import '../../services/auth_service.dart';
+import '../../widgets/ptit_logo.dart';
 import '../auth/login_screen.dart';
 import 'admin_topic_screen.dart';
 import 'create_question_screen.dart';
@@ -90,7 +91,15 @@ class AdminScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Trang quản trị'),
+        centerTitle: true,
+        title: const Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            PtitLogo(width: 54, showSubtitle: false),
+            SizedBox(width: 10),
+            Text('Trang quản trị'),
+          ],
+        ),
         actions: [
           IconButton(
             onPressed: () => _logout(context),
@@ -136,21 +145,26 @@ class AdminScreen extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 8,
-                    ),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.12),
-                      borderRadius: BorderRadius.circular(999),
-                    ),
-                    child: const Text(
-                      'TOEIC MASTER PRO',
-                      style: TextStyle(
+                  Center(
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 14,
+                        vertical: 10,
+                      ),
+                      decoration: BoxDecoration(
                         color: Colors.white,
-                        fontWeight: FontWeight.w700,
-                        letterSpacing: 0.8,
+                        borderRadius: BorderRadius.circular(20),
+                        boxShadow: const [
+                          BoxShadow(
+                            color: Color(0x100F172A),
+                            blurRadius: 12,
+                            offset: Offset(0, 6),
+                          ),
+                        ],
+                      ),
+                      child: const PtitLogo(
+                        width: 92,
+                        showSubtitle: false,
                       ),
                     ),
                   ),
@@ -173,8 +187,8 @@ class AdminScreen extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 22),
-                  Row(
-                    children: const [
+                  const Row(
+                    children: [
                       Expanded(
                         child: _StatChip(
                           value: '4',
@@ -206,7 +220,8 @@ class AdminScreen extends StatelessWidget {
             _menuCard(
               context: context,
               title: 'Quản lý Chủ đề và Từ vựng',
-              subtitle: 'Thêm, sửa, xóa chủ đề TOEIC và danh sách từ vựng theo từng chủ đề.',
+              subtitle:
+                  'Thêm, sửa, xóa chủ đề TOEIC và danh sách từ vựng theo từng chủ đề.',
               icon: Icons.auto_stories_rounded,
               tint: const Color(0xFF2563EB),
               screen: const AdminTopicScreen(),
@@ -215,7 +230,8 @@ class AdminScreen extends StatelessWidget {
             _menuCard(
               context: context,
               title: 'Quản lý người dùng',
-              subtitle: 'Xem danh sách user, đổi role, reset mật khẩu và xóa tài khoản.',
+              subtitle:
+                  'Xem danh sách user, đổi role, reset mật khẩu và xóa tài khoản.',
               icon: Icons.people_alt_rounded,
               tint: const Color(0xFF0F766E),
               screen: const ManageUsersScreen(),
@@ -224,7 +240,8 @@ class AdminScreen extends StatelessWidget {
             _menuCard(
               context: context,
               title: 'Quản lý câu hỏi',
-              subtitle: 'Theo dõi danh sách câu hỏi, lọc theo part và xóa nội dung không cần thiết.',
+              subtitle:
+                  'Theo dõi danh sách câu hỏi, lọc theo part và xóa nội dung không cần thiết.',
               icon: Icons.quiz_rounded,
               tint: const Color(0xFFF97316),
               screen: const ManageQuestionsScreen(),
@@ -233,7 +250,8 @@ class AdminScreen extends StatelessWidget {
             _menuCard(
               context: context,
               title: 'Thêm câu hỏi',
-              subtitle: 'Tạo câu hỏi mới và upload file audio hoặc hình ảnh nhanh hơn.',
+              subtitle:
+                  'Tạo câu hỏi mới và upload file audio hoặc hình ảnh nhanh hơn.',
               icon: Icons.add_box_rounded,
               tint: const Color(0xFF7C3AED),
               screen: const CreateQuestionScreen(),

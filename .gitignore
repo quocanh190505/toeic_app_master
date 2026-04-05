@@ -6,6 +6,8 @@
 venv/
 __pycache__/
 *.pyc
+*.pyo
+*.pyd
 
 backend_api/uploads/
 
@@ -14,3 +16,8 @@ flutter_app/build/
 flutter_app/.flutter-plugins
 flutter_app/.flutter-plugins-dependencies
 flutter_app/.packages
+flutter_app/.gradle-user-home/
+flutter_app/.pub-cache/
+flutter_app/android/.gradle/
+flutter_app/**/build/
+**/__pycache__/

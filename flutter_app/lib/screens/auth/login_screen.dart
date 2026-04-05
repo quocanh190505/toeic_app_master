@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../core/theme/app_theme.dart';
 import '../../models/user_model.dart';
 import '../../services/auth_service.dart';
+import '../../widgets/ptit_logo.dart';
 import '../admin/admin_screen.dart';
 import '../home/home_screen.dart';
 import 'register_screen.dart';
@@ -109,29 +110,54 @@ class _LoginScreenState extends State<LoginScreen> {
                         ],
                       ),
                       child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+                        crossAxisAlignment: CrossAxisAlignment.center,
                         children: [
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 12,
-                              vertical: 8,
-                            ),
-                            decoration: BoxDecoration(
-                              color: Colors.white.withValues(alpha: 0.14),
-                              borderRadius: BorderRadius.circular(999),
-                            ),
-                            child: const Text(
-                              'TOEIC MASTER PRO',
-                              style: TextStyle(
+                          Center(
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 20,
+                                vertical: 16,
+                              ),
+                              decoration: BoxDecoration(
                                 color: Colors.white,
-                                fontWeight: FontWeight.w700,
-                                letterSpacing: 0.6,
+                                borderRadius: BorderRadius.circular(24),
+                                boxShadow: const [
+                                  BoxShadow(
+                                    color: Color(0x120F172A),
+                                    blurRadius: 16,
+                                    offset: Offset(0, 8),
+                                  ),
+                                ],
+                              ),
+                              child: const PtitLogo(width: 150),
+                            ),
+                          ),
+                          const SizedBox(height: 18),
+                          Center(
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 8,
+                              ),
+                              decoration: BoxDecoration(
+                                color: Colors.white.withValues(alpha: 0.14),
+                                borderRadius: BorderRadius.circular(999),
+                              ),
+                              child: const Text(
+                                'TOEIC MASTER PRO',
+                                textAlign: TextAlign.center,
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.w700,
+                                  letterSpacing: 0.6,
+                                ),
                               ),
                             ),
                           ),
                           const SizedBox(height: 18),
                           const Text(
                             'Đăng nhập để tiếp tục hành trình tăng điểm TOEIC',
+                            textAlign: TextAlign.center,
                             style: TextStyle(
                               color: Colors.white,
                               fontSize: 30,
@@ -142,6 +168,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           const SizedBox(height: 10),
                           const Text(
                             'Theo dõi tiến độ, luyện mini test mỗi ngày và quản lý lộ trình học thật gọn gàng.',
+                            textAlign: TextAlign.center,
                             style: TextStyle(
                               color: Color(0xFFD7E5FF),
                               height: 1.5,
@@ -209,7 +236,8 @@ class _LoginScreenState extends State<LoginScreen> {
                                 width: double.infinity,
                                 padding: const EdgeInsets.all(14),
                                 decoration: BoxDecoration(
-                                  color: AppTheme.danger.withValues(alpha: 0.08),
+                                  color:
+                                      AppTheme.danger.withValues(alpha: 0.08),
                                   borderRadius: BorderRadius.circular(18),
                                 ),
                                 child: Text(

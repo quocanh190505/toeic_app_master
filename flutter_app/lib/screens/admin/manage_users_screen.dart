@@ -184,10 +184,10 @@ class _ManageUsersScreenState extends State<ManageUsersScreen> {
                   ? ListView(
                       padding: const EdgeInsets.all(20),
                       children: [
-                        _HeaderCard(
+                        const _HeaderCard(
                           title: 'Người dùng',
                           subtitle: 'Không tải được danh sách user.',
-                          trailing: const Icon(
+                          trailing: Icon(
                             Icons.person_off,
                             color: AppTheme.danger,
                             size: 30,
