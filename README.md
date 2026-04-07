@@ -68,6 +68,7 @@ TOEIC Master Pro hỗ trợ:
 - Thêm, sửa, xóa chủ đề từ vựng
 - Thêm, sửa, xóa từ vựng
 - Xem danh sách bài làm của người dùng
+- Xem chi tiết lịch sử làm bài của từng người dùng cụ thể
 
 ### Dữ liệu TOEIC
 
@@ -270,7 +271,8 @@ Mỗi file router tương ứng một nhóm API.
   - upload audio/ảnh
   - quản lý chủ đề
   - quản lý từ vựng
-  - xem bài làm của user
+  - xem danh sách bài làm của user
+  - xem chi tiết từng bài làm của user theo `attempt_id`
 
 ### Thư mục `uploads/`
 
@@ -369,7 +371,8 @@ Các file model dùng để parse JSON từ backend sang đối tượng Dart.
   Service dành cho màn hình admin:
   - quản lý user
   - quản lý câu hỏi
-  - quản lý attempt
+  - lấy danh sách bài làm theo từng user
+  - lấy chi tiết bài làm để admin review
 
 #### `lib/screens/`
 
@@ -448,7 +451,10 @@ Mỗi thư mục con là một nhóm màn hình.
   Danh sách câu hỏi để admin lọc, sửa, xóa.
 
 - [manage_users_screen.dart](/e:/BTL_Python/toeic_app_master/flutter_app/lib/screens/admin/manage_users_screen.dart)
-  Quản lý danh sách người dùng, quyền và reset mật khẩu.
+  Quản lý danh sách người dùng, quyền, reset mật khẩu và mở lịch sử làm bài của từng user.
+
+- [user_attempts_screen.dart](/e:/BTL_Python/toeic_app_master/flutter_app/lib/screens/admin/user_attempts_screen.dart)
+  Hiển thị danh sách các bài làm của một người dùng cụ thể để admin chọn xem.
 
 #### `lib/widgets/`
 

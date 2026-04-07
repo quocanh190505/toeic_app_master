@@ -220,7 +220,7 @@ class _PracticeScreenState extends State<PracticeScreen> {
           partUnits.add(
             _QuestionUnit(
               section: section,
-              sectionTitle: section == 'reading' ? 'Bai doc' : 'Bai nghe',
+              sectionTitle: section == 'reading' ? 'Bài đọc' : 'Bài nghe',
               part: part,
               questions: groupedQuestions,
             ),
@@ -233,7 +233,7 @@ class _PracticeScreenState extends State<PracticeScreen> {
           partUnits.add(
             _QuestionUnit(
               section: section,
-              sectionTitle: section == 'reading' ? 'Bai doc' : 'Bai nghe',
+              sectionTitle: section == 'reading' ? 'Bài đọc' : 'Bài nghe',
               part: part,
               questions: [question],
             ),
@@ -255,7 +255,7 @@ class _PracticeScreenState extends State<PracticeScreen> {
         units.add(
           _QuestionUnit(
             section: part <= 4 ? 'listening' : 'reading',
-            sectionTitle: part <= 4 ? 'Bai nghe' : 'Bai doc',
+            sectionTitle: part <= 4 ? 'Bài nghe' : 'Bài đọc',
             part: part,
             questions: partQuestions.sublist(index, end),
           ),
@@ -318,7 +318,7 @@ class _PracticeScreenState extends State<PracticeScreen> {
       if (!mounted) return;
       setState(() => _activeAudioUrl = null);
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Khong phat duoc audio: $e')),
+        SnackBar(content: Text('Không phát được audio: $e')),
       );
     }
   }
@@ -328,19 +328,19 @@ class _PracticeScreenState extends State<PracticeScreen> {
       context: context,
       builder: (context) {
         return AlertDialog(
-          title: const Text('Xac nhan nop bai'),
+          title: const Text('Xác nhận nộp bài'),
           content: Text(
-            'Bai lam chua hoan thanh, ban co chac chan nop bai khong\n\n'
-            'Ban con $unansweredCount cau chua tra loi.',
+            'Bài làm chưa hoàn thành, bạn có chắc chắn nộp bài không?\n\n'
+            'Bạn còn $unansweredCount câu chưa trả lời.',
           ),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context, false),
-              child: const Text('Tiep tuc lam bai'),
+              child: const Text('Tiếp tục làm bài'),
             ),
             ElevatedButton(
               onPressed: () => Navigator.pop(context, true),
-              child: const Text('Nop bai'),
+              child: const Text('Nộp bài'),
             ),
           ],
         );
@@ -354,7 +354,7 @@ class _PracticeScreenState extends State<PracticeScreen> {
   }) async {
     if (questions.isEmpty) {
       setState(() {
-        error = 'Khong co cau hoi de nop bai.';
+        error = 'Không có câu hỏi để nộp bài.';
       });
       return;
     }
@@ -363,7 +363,7 @@ class _PracticeScreenState extends State<PracticeScreen> {
 
     if (!allowIncomplete && selectedAnswers.length < questions.length) {
       setState(() {
-        error = 'Ban chua tra loi het tat ca cau hoi.';
+        error = 'Bạn chưa trả lời hết tất cả câu hỏi.';
       });
       return;
     }
@@ -371,7 +371,7 @@ class _PracticeScreenState extends State<PracticeScreen> {
     setState(() {
       submitting = true;
       error =
-          autoSubmitted ? 'Da het gio. He thong dang tu dong nop bai...' : null;
+          autoSubmitted ? 'Đã hết giờ. Hệ thống đang tự động nộp bài...' : null;
     });
 
     _stopTimer();
@@ -438,7 +438,7 @@ class _PracticeScreenState extends State<PracticeScreen> {
 
     setState(() {
       error = !_isUnitAnswered(unit)
-          ? 'Cum hien tai chua hoan thanh. Ban van co the tiep tuc hoac nop bai bat ky luc nao.'
+          ? 'Cụm hiện tại chưa hoàn thành. Bạn vẫn có thể tiếp tục hoặc nộp bài bất kỳ lúc nào.'
           : null;
       _currentUnitIndex += 1;
     });
@@ -533,15 +533,15 @@ class _PracticeScreenState extends State<PracticeScreen> {
               crossAxisAlignment: WrapCrossAlignment.center,
               children: [
                 _InfoChip(
-                  label: 'Cum',
+                  label: 'Cụm',
                   value: '${_currentUnitIndex + 1}/${fullTestUnits.length}',
                 ),
                 _InfoChip(
-                  label: 'Trong cum',
+                  label: 'Trong cụm',
                   value: '$answeredInUnit/${unit.questions.length}',
                 ),
                 _InfoChip(
-                  label: 'Tong tien do',
+                  label: 'Tổng tiến độ',
                   value: '${selectedAnswers.length}/${questions.length}',
                 ),
                 if (_isFullTest) _buildTimerChip(),
@@ -554,10 +554,10 @@ class _PracticeScreenState extends State<PracticeScreen> {
 
     final title = _isFullTest ? 'Full Test' : 'Mini Test';
     final subtitle = _isFullTest
-        ? 'Mo phong bai thi TOEIC day du'
+        ? 'Mô phỏng bài thi TOEIC đầy đủ'
         : widget.part != null
             ? 'Mini Test - Part ${widget.part}'
-            : 'Mini Test ngau nhien';
+            : 'Mini Test ngẫu nhiên';
 
     return Container(
       width: double.infinity,
@@ -583,11 +583,11 @@ class _PracticeScreenState extends State<PracticeScreen> {
             runSpacing: 10,
             children: [
               Text(
-                'Tong so cau: ${questions.length}',
+                'Tổng số câu: ${questions.length}',
                 style: const TextStyle(fontWeight: FontWeight.w700),
               ),
               Text(
-                'Da chon: ${selectedAnswers.length}/${questions.length}',
+                'Đã chọn: ${selectedAnswers.length}/${questions.length}',
                 style: const TextStyle(fontWeight: FontWeight.w700),
               ),
             ],
@@ -645,7 +645,7 @@ class _PracticeScreenState extends State<PracticeScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            unit.part <= 4 ? 'Tu lieu nghe / nhin' : 'Tu lieu doc',
+            unit.part <= 4 ? 'Tư liệu nghe / nhìn' : 'Tư liệu đọc',
             style: const TextStyle(
               fontWeight: FontWeight.w800,
               color: AppTheme.text,
@@ -679,7 +679,7 @@ class _PracticeScreenState extends State<PracticeScreen> {
                     color: const Color(0xFFE2E8F0),
                     alignment: Alignment.center,
                     child: const Text(
-                      'Khong tai duoc hinh anh',
+                      'Không tải được hình ảnh',
                       style: TextStyle(color: AppTheme.subText),
                     ),
                   );
@@ -712,7 +712,7 @@ class _PracticeScreenState extends State<PracticeScreen> {
                                   : audioQuestion.audioUrl,
                             ) &&
                         _audioPlayer.playing
-                    ? 'Tam dung audio'
+                    ? 'Tạm dừng audio'
                     : 'Nghe audio',
               ),
             ),
@@ -743,7 +743,7 @@ class _PracticeScreenState extends State<PracticeScreen> {
               children: [
                 Expanded(
                   child: Text(
-                    'Cau $displayNumber - Part ${question.part}',
+                    'Câu $displayNumber - Part ${question.part}',
                     style: const TextStyle(
                       fontWeight: FontWeight.w800,
                       fontSize: 16,
@@ -790,7 +790,7 @@ class _PracticeScreenState extends State<PracticeScreen> {
                         ),
                         child: const Center(
                           child: Text(
-                            'Khong tai duoc hinh anh',
+                            'Không tải được hình ảnh',
                             style: TextStyle(color: AppTheme.subText),
                           ),
                         ),
@@ -813,7 +813,7 @@ class _PracticeScreenState extends State<PracticeScreen> {
                     _activeAudioUrl ==
                                 ApiConstants.uploadUrl(question.audioUrl) &&
                             _audioPlayer.playing
-                        ? 'Tam dung audio'
+                        ? 'Tạm dừng audio'
                         : 'Nghe audio',
                   ),
                 ),
@@ -831,7 +831,7 @@ class _PracticeScreenState extends State<PracticeScreen> {
   Widget _buildStructuredBody() {
     final unit = _currentUnit;
     if (unit == null) {
-      return const Center(child: Text('Khong co du lieu full test.'));
+      return const Center(child: Text('Không có dữ liệu full test.'));
     }
 
     final firstQuestionIndex =
@@ -918,7 +918,7 @@ class _PracticeScreenState extends State<PracticeScreen> {
                       _currentUnitIndex == 0 || submitting || _timeExpired
                           ? null
                           : _goToPreviousUnit,
-                  child: const Text('Quay lai'),
+                  child: const Text('Quay lại'),
                 ),
               ),
               const SizedBox(width: 12),
@@ -930,7 +930,7 @@ class _PracticeScreenState extends State<PracticeScreen> {
                     foregroundColor: Colors.white,
                   ),
                   child: Text(
-                    _isFullTest ? 'Nop Full Test' : 'Nop Mini Test',
+                    _isFullTest ? 'Nộp Full Test' : 'Nộp Mini Test',
                   ),
                 ),
               ),
@@ -949,8 +949,8 @@ class _PracticeScreenState extends State<PracticeScreen> {
                         )
                       : Text(
                           _currentUnitIndex == fullTestUnits.length - 1
-                              ? 'Hoan thanh'
-                              : 'Tiep theo',
+                              ? 'Hoàn thành'
+                              : 'Tiếp theo',
                         ),
                 ),
               ),
@@ -964,21 +964,21 @@ class _PracticeScreenState extends State<PracticeScreen> {
   String _instructionForPart(int part) {
     switch (part) {
       case 1:
-        return 'Part 1: Moi trang gom 1 cau voi anh va lua chon mo ta dung nhat.';
+        return 'Part 1: Mỗi trang gồm 1 câu với ảnh và lựa chọn mô tả đúng nhất.';
       case 2:
-        return 'Part 2: Moi trang gom 1 cau hoi nghe ngan va 4 lua chon tra loi.';
+        return 'Part 2: Mỗi trang gồm 1 câu hỏi nghe ngắn và 4 lựa chọn trả lời.';
       case 3:
-        return 'Part 3: Moi cum gom 1 doan hoi thoai va 3 cau hoi lien tiep.';
+        return 'Part 3: Mỗi cụm gồm 1 đoạn hội thoại và 3 câu hỏi liên tiếp.';
       case 4:
-        return 'Part 4: Moi cum gom 1 bai noi ngan va 3 cau hoi lien tiep.';
+        return 'Part 4: Mỗi cụm gồm 1 bài nói ngắn và 3 câu hỏi liên tiếp.';
       case 5:
-        return 'Part 5: Moi trang la 1 cau hoi ngu phap hoac tu vung doc lap.';
+        return 'Part 5: Mỗi trang là 1 câu hỏi ngữ pháp hoặc từ vựng độc lập.';
       case 6:
-        return 'Part 6: Moi cum gom 1 doan van ngan va 2 cau hoi lien quan.';
+        return 'Part 6: Mỗi cụm gồm 1 đoạn văn ngắn và 2 câu hỏi liên quan.';
       case 7:
-        return 'Part 7: Moi cum gom 1 bai doc va 3 cau hoi di kem.';
+        return 'Part 7: Mỗi cụm gồm 1 bài đọc và 3 câu hỏi đi kèm.';
       default:
-        return 'Lam bai theo dung thu tu cua de thi.';
+        return 'Làm bài theo đúng thứ tự của đề thi.';
     }
   }
 
@@ -1022,7 +1022,7 @@ class _PracticeScreenState extends State<PracticeScreen> {
                     ),
                   )
                 : Text(
-                    _isFullTest ? 'Nop Full Test' : 'Nop Mini Test',
+                    _isFullTest ? 'Nộp Full Test' : 'Nộp Mini Test',
                   ),
           ),
         ),
@@ -1046,7 +1046,7 @@ class _PracticeScreenState extends State<PracticeScreen> {
             IconButton(
               onPressed: submitting || _timeExpired ? null : submit,
               icon: const Icon(Icons.send_rounded),
-              tooltip: _isFullTest ? 'Nop Full Test' : 'Nop Mini Test',
+              tooltip: _isFullTest ? 'Nộp Full Test' : 'Nộp Mini Test',
             ),
           if (_isFullTest)
             Padding(
@@ -1056,7 +1056,7 @@ class _PracticeScreenState extends State<PracticeScreen> {
           IconButton(
             onPressed: submitting ? null : loadQuestions,
             icon: const Icon(Icons.refresh),
-            tooltip: 'Tai lai',
+            tooltip: 'Tải lại',
           ),
         ],
       ),
@@ -1065,7 +1065,7 @@ class _PracticeScreenState extends State<PracticeScreen> {
               child: Padding(
                 padding: const EdgeInsets.all(20),
                 child: Text(
-                  error ?? 'Khong tai duoc cau hoi.',
+                  error ?? 'Không tải được câu hỏi.',
                   textAlign: TextAlign.center,
                 ),
               ),

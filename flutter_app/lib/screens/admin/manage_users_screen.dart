@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../core/theme/app_theme.dart';
 import '../../services/admin_service.dart';
+import 'user_attempts_screen.dart';
 
 class ManageUsersScreen extends StatefulWidget {
   const ManageUsersScreen({super.key});
@@ -159,6 +160,19 @@ class _ManageUsersScreenState extends State<ManageUsersScreen> {
     }
   }
 
+  void openUserAttempts(Map<String, dynamic> user) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => UserAttemptsScreen(
+          userId: user['id'] as int,
+          userName: (user['full_name'] ?? '').toString(),
+          userEmail: (user['email'] ?? '').toString(),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -243,7 +257,10 @@ class _ManageUsersScreenState extends State<ManageUsersScreen> {
                           final initialsSource =
                               fullName.isNotEmpty ? fullName : email;
                           final initials = initialsSource.isNotEmpty
-                              ? initialsSource.trim().substring(0, 1).toUpperCase()
+                              ? initialsSource
+                                  .trim()
+                                  .substring(0, 1)
+                                  .toUpperCase()
                               : '?';
 
                           return Padding(
@@ -255,7 +272,8 @@ class _ManageUsersScreenState extends State<ManageUsersScreen> {
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                     Row(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
                                       children: [
                                         CircleAvatar(
                                           radius: 26,
@@ -303,7 +321,8 @@ class _ManageUsersScreenState extends State<ManageUsersScreen> {
                                                   color: _roleColor(role)
                                                       .withValues(alpha: 0.12),
                                                   borderRadius:
-                                                      BorderRadius.circular(999),
+                                                      BorderRadius.circular(
+                                                          999),
                                                 ),
                                                 child: Text(
                                                   role.toUpperCase(),
@@ -325,6 +344,12 @@ class _ManageUsersScreenState extends State<ManageUsersScreen> {
                                       runSpacing: 10,
                                       children: [
                                         OutlinedButton.icon(
+                                          onPressed: () => openUserAttempts(u),
+                                          icon:
+                                              const Icon(Icons.history_rounded),
+                                          label: const Text('Lịch sử làm bài'),
+                                        ),
+                                        OutlinedButton.icon(
                                           onPressed: () =>
                                               changeRole(u['id'], role),
                                           icon: const Icon(Icons.swap_horiz),
@@ -341,7 +366,8 @@ class _ManageUsersScreenState extends State<ManageUsersScreen> {
                                             backgroundColor: AppTheme.danger,
                                           ),
                                           onPressed: () => deleteUserDialog(u),
-                                          icon: const Icon(Icons.delete_outline),
+                                          icon:
+                                              const Icon(Icons.delete_outline),
                                           label: const Text('Xóa'),
                                         ),
                                       ],

@@ -89,7 +89,7 @@ class ResultScreen extends StatelessWidget {
           style: const TextStyle(fontWeight: FontWeight.w700),
         ),
         subtitle: Text(
-          'Dung: $correct/$total\nChinh xac: ${accuracy.toStringAsFixed(2)}%',
+          'Đúng: $correct/$total\nChính xác: ${accuracy.toStringAsFixed(2)}%',
         ),
       ),
     );
@@ -100,14 +100,14 @@ class ResultScreen extends StatelessWidget {
     final part = _toInt(item['part']);
     final hidesPart2Content = part == 2;
     final content = hidesPart2Content
-        ? 'Cau ${index + 1} - Part 2'
-        : (item['content'] ?? 'Cau hoi ${index + 1}').toString();
-    final selectedAnswer = (item['selected_answer'] ?? 'Chua chon').toString();
+        ? 'Câu ${index + 1} - Part 2'
+        : (item['content'] ?? 'Câu hỏi ${index + 1}').toString();
+    final selectedAnswer = (item['selected_answer'] ?? 'Chưa chọn').toString();
     final correctAnswer = (item['correct_answer'] ?? '').toString();
     final explanation = (item['explanation'] ?? '').toString();
     final explanationLabel = hidesPart2Content
-        ? 'An cho Part 2'
-        : (explanation.isEmpty ? 'Khong co' : explanation);
+        ? 'Ẩn cho Part 2'
+        : (explanation.isEmpty ? 'Không có' : explanation);
 
     return Card(
       child: ListTile(
@@ -119,9 +119,9 @@ class ResultScreen extends StatelessWidget {
         subtitle: Padding(
           padding: const EdgeInsets.only(top: 8),
           child: Text(
-            'Ban chon: $selectedAnswer\n'
-            'Dap an dung: $correctAnswer\n'
-            'Giai thich: $explanationLabel',
+            'Bạn chọn: $selectedAnswer\n'
+            'Đáp án đúng: $correctAnswer\n'
+            'Giải thích: $explanationLabel',
           ),
         ),
         trailing: Icon(
@@ -157,7 +157,7 @@ class ResultScreen extends StatelessWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Ket qua'),
+        title: const Text('Kết quả'),
       ),
       body: ListView(
         padding: const EdgeInsets.all(18),
@@ -182,7 +182,7 @@ class ResultScreen extends StatelessWidget {
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  'Dung $correctCount/$totalQuestions cau',
+                  'Đúng $correctCount/$totalQuestions câu',
                   style: const TextStyle(
                     color: Colors.white70,
                     fontSize: 15,
@@ -196,7 +196,7 @@ class ResultScreen extends StatelessWidget {
             children: [
               Expanded(
                 child: _summaryCard(
-                  title: 'Bai da hoan thanh',
+                  title: 'Bài đã hoàn thành',
                   value: '$completedTests',
                   icon: Icons.assignment_turned_in_outlined,
                 ),
@@ -204,7 +204,7 @@ class ResultScreen extends StatelessWidget {
               const SizedBox(width: 12),
               Expanded(
                 child: _summaryCard(
-                  title: 'Diem cao nhat',
+                  title: 'Điểm cao nhất',
                   value: '$highestScore',
                   icon: Icons.emoji_events_outlined,
                 ),
@@ -213,13 +213,13 @@ class ResultScreen extends StatelessWidget {
           ),
           const SizedBox(height: 12),
           _summaryCard(
-            title: 'Tien do tong',
+            title: 'Tiến độ tổng',
             value: overallProgress,
             icon: Icons.show_chart,
           ),
           const SizedBox(height: 20),
           const Text(
-            'Thong ke theo part',
+            'Thống kê theo part',
             style: TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.w800,
@@ -230,7 +230,7 @@ class ResultScreen extends StatelessWidget {
             const Card(
               child: Padding(
                 padding: EdgeInsets.all(16),
-                child: Text('Chua co thong ke theo part'),
+                child: Text('Chưa có thống kê theo part'),
               ),
             )
           else
@@ -240,7 +240,7 @@ class ResultScreen extends StatelessWidget {
             }),
           const SizedBox(height: 20),
           const Text(
-            'Dap an chi tiet',
+            'Đáp án chi tiết',
             style: TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.w800,
@@ -251,7 +251,7 @@ class ResultScreen extends StatelessWidget {
             const Card(
               child: Padding(
                 padding: EdgeInsets.all(16),
-                child: Text('Chua co du lieu dap an chi tiet'),
+                child: Text('Chưa có dữ liệu đáp án chi tiết'),
               ),
             )
           else

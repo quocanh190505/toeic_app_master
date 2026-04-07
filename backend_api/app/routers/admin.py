@@ -20,6 +20,7 @@ from app.models.entities import (
     UserStudiedWord,
     VocabularyWord,
 )
+from app.routers.questions import build_attempt_detail_response
 from app.services.auth_service import hash_password
 from app.schemas.vocabulary import VocabularyCreate, VocabularyUpdatePayload
 
@@ -541,6 +542,25 @@ def list_attempts_admin(
         }
         for a in attempts
     ]
+
+
+@router.get("/attempts/{attempt_id}")
+def get_attempt_detail_admin(
+    attempt_id: int,
+    db: Session = Depends(get_db),
+    admin: User = Depends(require_admin),
+):
+    attempt = db.query(TestAttempt).filter(TestAttempt.id == attempt_id).first()
+
+    if not attempt:
+        raise HTTPException(status_code=404, detail="Attempt not found")
+
+    detail = build_attempt_detail_response(attempt, db)
+    owner = db.query(User).filter(User.id == attempt.user_id).first()
+    detail["user_id"] = attempt.user_id
+    detail["user_email"] = owner.email if owner else None
+    detail["user_full_name"] = owner.full_name if owner else None
+    return detail
 
 
 @router.put("/users/{user_id}/role")

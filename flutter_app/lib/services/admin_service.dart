@@ -182,4 +182,9 @@ class AdminService {
     );
     return List<Map<String, dynamic>>.from(response.data);
   }
+
+  Future<Map<String, dynamic>> getAttemptDetail(int attemptId) async {
+    final response = await _dio.get('/admin/attempts/$attemptId');
+    return Map<String, dynamic>.from(response.data);
+  }
 }

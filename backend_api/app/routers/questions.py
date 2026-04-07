@@ -586,20 +586,12 @@ def list_my_attempts(
     ]
 
 
-@router.get("/attempts/{attempt_id}")
-def get_attempt_detail(
-    attempt_id: int,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
-):
+def build_attempt_detail_response(attempt: TestAttempt, db: Session):
     attempt = (
         db.query(TestAttempt)
-        .filter(TestAttempt.id == attempt_id, TestAttempt.user_id == current_user.id)
+        .filter(TestAttempt.id == attempt.id)
         .first()
-    )
-
-    if not attempt:
-        raise HTTPException(status_code=404, detail="Attempt not found")
+    ) or attempt
 
     rows = (
         db.query(TestAttemptAnswer, Question)
@@ -653,6 +645,24 @@ def get_attempt_detail(
         "part_stats": build_part_stats_response(part_stats),
         "results": results,
     }
+
+
+@router.get("/attempts/{attempt_id}")
+def get_attempt_detail(
+    attempt_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    attempt = (
+        db.query(TestAttempt)
+        .filter(TestAttempt.id == attempt_id, TestAttempt.user_id == current_user.id)
+        .first()
+    )
+
+    if not attempt:
+        raise HTTPException(status_code=404, detail="Attempt not found")
+
+    return build_attempt_detail_response(attempt, db)
 
 
 @router.post("/{question_id}/bookmark")
