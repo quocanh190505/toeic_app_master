@@ -16,18 +16,29 @@ class VocabularyWordModel {
   });
 
   factory VocabularyWordModel.fromJson(Map<String, dynamic> json) {
+    int toInt(dynamic value, [int fallback = 0]) {
+      if (value is int) return value;
+      return int.tryParse(value?.toString() ?? '') ?? fallback;
+    }
+
+    bool toBool(dynamic value) {
+      if (value is bool) return value;
+      final normalized = value?.toString().trim().toLowerCase();
+      return normalized == 'true' || normalized == '1';
+    }
+
     return VocabularyWordModel(
-      id: json['id'],
-      word: json['word'],
-      meaning: json['meaning'],
-      example: json['example'],
-      topicId: json['topic_id'],
+      id: toInt(json['id']),
+      word: (json['word'] ?? '').toString(),
+      meaning: (json['meaning'] ?? '').toString(),
+      example: json['example']?.toString(),
+      topicId: json['topic_id'] == null ? null : toInt(json['topic_id']),
       // Khớp chính xác với key "is_studied" từ Backend trả về
-      isStudied: json['is_studied'] ?? false, 
+      isStudied: toBool(json['is_studied']),
     );
   }
 
-  // Thêm hàm toJson nếu sau này bạn cần gửi ngược dữ liệu lên
+
   Map<String, dynamic> toJson() {
     return {
       'id': id,

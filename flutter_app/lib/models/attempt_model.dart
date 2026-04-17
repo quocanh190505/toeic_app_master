@@ -16,13 +16,18 @@ class AttemptModel {
   });
 
   factory AttemptModel.fromJson(Map<String, dynamic> json) {
+    int toInt(dynamic value, [int fallback = 0]) {
+      if (value is int) return value;
+      return int.tryParse(value?.toString() ?? '') ?? fallback;
+    }
+
     return AttemptModel(
-      id: json['id'],
-      testType: json['test_type'] ?? 'mini',
-      totalQuestions: json['total_questions'] ?? 0,
-      correctCount: json['correct_count'] ?? 0,
-      score: json['score'] ?? 0,
-      submittedAt: json['submitted_at'] ?? '',
+      id: toInt(json['id']),
+      testType: (json['test_type'] ?? 'mini').toString(),
+      totalQuestions: toInt(json['total_questions']),
+      correctCount: toInt(json['correct_count']),
+      score: toInt(json['score']),
+      submittedAt: (json['submitted_at'] ?? '').toString(),
     );
   }
 }

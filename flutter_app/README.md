@@ -1,4 +1,4 @@
-# TOEIC Master Pro Flutter App
+﻿# TOEIC Master Pro Flutter App
 
 Đây là ứng dụng Flutter của project TOEIC Master Pro.
 
@@ -13,15 +13,15 @@ App dùng để:
 
 ```text
 flutter_app/
-|- lib/
-|  |- core/         # hằng số, theme
-|  |- models/       # model dữ liệu
-|  |- screens/      # các màn hình
-|  |- services/     # gọi API, xử lý dữ liệu
-|  `- widgets/      # widget dùng lại
-|- integration_test/
-|- test/
-`- pubspec.yaml
+|-- lib/
+|   |-- core/         # hằng số, theme
+|   |-- models/       # model dữ liệu
+|   |-- screens/      # các màn hình
+|   |-- services/     # gọi API, xử lý dữ liệu
+|   `-- widgets/      # widget dùng lại
+|-- integration_test/
+|-- test/
+`-- pubspec.yaml
 ```
 
 ## Yêu cầu
@@ -45,52 +45,43 @@ flutter pub get
 flutter run
 ```
 
-Nếu đang dùng Android emulator và backend chạy local trên máy tính, app hiện được cấu hình để gọi API qua:
+## Cấu hình API
 
-```text
-http://10.0.2.2:8000
-```
+File cấu hình API nằm tại:
+- [api_constants.dart](/e:/BTL_Python/toeic_app_master/flutter_app/lib/core/constants/api_constants.dart)
 
-File cấu hình:
+Hiện tại app đang dùng:
+- `http://10.0.2.2:8000`
 
-- [lib/core/constants/api_constants.dart](/d:/pythontest/toeic_fullstack_project/flutter_app/lib/core/constants/api_constants.dart)
+Địa chỉ này phù hợp khi chạy bằng Android emulator và backend chạy local trên máy.
 
-## Build APK
+## Một số file quan trọng
 
-Nếu muốn build file cài đặt thử nghiệm:
+- [main.dart](/e:/BTL_Python/toeic_app_master/flutter_app/lib/main.dart)
+  Điểm khởi động của ứng dụng.
 
-```bash
-flutter build apk --release
-```
+- [practice_screen.dart](/e:/BTL_Python/toeic_app_master/flutter_app/lib/screens/practice/practice_screen.dart)
+  Màn hình làm bài TOEIC.
 
-File tạo ra nằm tại:
+- [result_screen.dart](/e:/BTL_Python/toeic_app_master/flutter_app/lib/screens/practice/result_screen.dart)
+  Màn hình hiển thị kết quả và review đáp án.
 
-- [build/app/outputs/flutter-apk/app-release.apk](/d:/pythontest/toeic_fullstack_project/flutter_app/build/app/outputs/flutter-apk/app-release.apk)
+- [history_screen.dart](/e:/BTL_Python/toeic_app_master/flutter_app/lib/screens/history/history_screen.dart)
+  Màn hình danh sách lịch sử làm bài.
 
-## Một số màn hình chính
+- [vocabulary_screen.dart](/e:/BTL_Python/toeic_app_master/flutter_app/lib/screens/vocabulary/vocabulary_screen.dart)
+  Màn hình học từ vựng theo chủ đề.
 
-- [lib/screens/auth/login_screen.dart](/d:/pythontest/toeic_fullstack_project/flutter_app/lib/screens/auth/login_screen.dart)
-- [lib/screens/auth/register_screen.dart](/d:/pythontest/toeic_fullstack_project/flutter_app/lib/screens/auth/register_screen.dart)
-- [lib/screens/home/home_screen.dart](/d:/pythontest/toeic_fullstack_project/flutter_app/lib/screens/home/home_screen.dart)
-- [lib/screens/practice/practice_screen.dart](/d:/pythontest/toeic_fullstack_project/flutter_app/lib/screens/practice/practice_screen.dart)
-- [lib/screens/admin/admin_screen.dart](/d:/pythontest/toeic_fullstack_project/flutter_app/lib/screens/admin/admin_screen.dart)
+- [admin_screen.dart](/e:/BTL_Python/toeic_app_master/flutter_app/lib/screens/admin/admin_screen.dart)
+  Màn hình chính cho quản trị viên.
+
+- [api_client.dart](/e:/BTL_Python/toeic_app_master/flutter_app/lib/services/api_client.dart)
+  Cấu hình Dio, tự động gắn token và refresh token.
+
+- [test_service.dart](/e:/BTL_Python/toeic_app_master/flutter_app/lib/services/test_service.dart)
+  Service lấy đề, nộp bài và đọc lịch sử.
 
 ## Ghi chú
 
-- `flutter_app/` là app chính, không phải thư mục `flutter/`.
-- Nếu tiếng Việt bị lỗi dấu trong file Dart, hãy lưu file bằng `UTF-8`.
-- Full test hiện đã có đồng hồ đếm giờ và tự nộp bài khi hết thời gian.
-- Nếu đổi môi trường chạy API, chỉ cần sửa `baseUrl` trong `api_constants.dart`.
-
-## Test
-
-```bash
-flutter test
-flutter test integration_test
-```
-
-## Liên kết với project tổng
-
-Đây chỉ là phần frontend Flutter. Để chạy đầy đủ hệ thống, hãy xem README gốc của project:
-
-- [README.md](/d:/pythontest/toeic_fullstack_project/README.md)
+- Part 2 hiện đã được chỉnh theo form demo: chỉ hiện audio và các lựa chọn A/B/C/D.
+- Nếu chạy trên điện thoại thật thay vì emulator, cần đổi lại `baseUrl` cho phù hợp.

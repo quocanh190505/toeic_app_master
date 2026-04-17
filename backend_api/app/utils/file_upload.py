@@ -19,7 +19,7 @@ def save_upload_file(
     if file.content_type not in allowed_content_types:
         raise HTTPException(
             status_code=400,
-            detail=f"Invalid file type: {file.content_type}",
+            detail=f"Loại tệp không hợp lệ: {file.content_type}",
         )
 
     ext = os.path.splitext(file.filename or "")[1].lower()

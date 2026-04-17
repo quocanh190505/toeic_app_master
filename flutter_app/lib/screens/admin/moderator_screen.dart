@@ -3,15 +3,12 @@ import 'package:flutter/material.dart';
 import '../../core/theme/app_theme.dart';
 import '../../services/auth_service.dart';
 import '../auth/login_screen.dart';
-import 'admin_topic_screen.dart';
-import 'create_question_screen.dart';
 import 'generate_test_screen.dart';
 import 'manage_premium_requests_screen.dart';
 import 'manage_questions_screen.dart';
-import 'manage_users_screen.dart';
 
-class AdminScreen extends StatelessWidget {
-  const AdminScreen({super.key});
+class ModeratorScreen extends StatelessWidget {
+  const ModeratorScreen({super.key});
 
   Future<void> _logout(BuildContext context) async {
     await AuthService().logout();
@@ -85,7 +82,7 @@ class AdminScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Trang quản trị'),
+        title: const Text('Khu kiểm duyệt'),
         actions: [
           IconButton(
             onPressed: () => _logout(context),
@@ -100,9 +97,7 @@ class AdminScreen extends StatelessWidget {
             padding: const EdgeInsets.all(22),
             decoration: BoxDecoration(
               gradient: const LinearGradient(
-                colors: [Color(0xFF0F172A), Color(0xFF2563EB)],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
+                colors: [Color(0xFF9A3412), Color(0xFFF97316)],
               ),
               borderRadius: BorderRadius.circular(28),
             ),
@@ -110,7 +105,7 @@ class AdminScreen extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Quản trị hệ thống TOEIC',
+                  'Không gian kiểm duyệt nội dung',
                   style: TextStyle(
                     color: Colors.white,
                     fontSize: 28,
@@ -119,8 +114,8 @@ class AdminScreen extends StatelessWidget {
                 ),
                 SizedBox(height: 10),
                 Text(
-                  'Quản lý người dùng, câu hỏi, đề thi, chủ đề và duyệt thanh toán Premium trong một nơi.',
-                  style: TextStyle(color: Color(0xFFDCE7FF), height: 1.5),
+                  'Duyệt câu hỏi, duyệt thanh toán Premium và sinh đề từ ngân hàng câu hỏi đạt chuẩn.',
+                  style: TextStyle(color: Color(0xFFFFEDD5), height: 1.5),
                 ),
               ],
             ),
@@ -128,56 +123,29 @@ class AdminScreen extends StatelessWidget {
           const SizedBox(height: 22),
           _menuCard(
             context: context,
-            title: 'Quản lý chủ đề & từ vựng',
-            subtitle: 'Thêm, sửa, xóa chủ đề TOEIC và từ vựng.',
-            icon: Icons.auto_stories_rounded,
-            tint: const Color(0xFF2563EB),
-            screen: const AdminTopicScreen(),
-          ),
-          const SizedBox(height: 14),
-          _menuCard(
-            context: context,
-            title: 'Quản lý người dùng',
-            subtitle: 'Đổi vai trò giữa user, teacher, moderator và admin.',
-            icon: Icons.people_alt_rounded,
-            tint: const Color(0xFF0F766E),
-            screen: const ManageUsersScreen(),
-          ),
-          const SizedBox(height: 14),
-          _menuCard(
-            context: context,
-            title: 'Quản lý câu hỏi',
-            subtitle: 'Lọc theo part và trạng thái duyệt.',
-            icon: Icons.quiz_rounded,
+            title: 'Duyệt câu hỏi',
+            subtitle: 'Xem các câu đang chờ duyệt và cập nhật trạng thái.',
+            icon: Icons.fact_check_rounded,
             tint: const Color(0xFFF97316),
             screen: const ManageQuestionsScreen(),
           ),
           const SizedBox(height: 14),
           _menuCard(
             context: context,
-            title: 'Thêm câu hỏi',
-            subtitle: 'Tạo câu hỏi mới và gán độ khó ngay khi nhập.',
-            icon: Icons.add_box_rounded,
-            tint: const Color(0xFF7C3AED),
-            screen: const CreateQuestionScreen(),
+            title: 'Duyệt thanh toán Premium',
+            subtitle: 'Kích hoạt Premium cho người dùng sau khi kiểm tra giao dịch.',
+            icon: Icons.payments_rounded,
+            tint: const Color(0xFF0F766E),
+            screen: const ManagePremiumRequestsScreen(),
           ),
           const SizedBox(height: 14),
           _menuCard(
             context: context,
             title: 'Sinh đề tự động',
-            subtitle: 'Tạo full test hoặc mini test.',
+            subtitle: 'Tạo đề mới từ ngân hàng câu hỏi đã được duyệt.',
             icon: Icons.auto_awesome_rounded,
-            tint: const Color(0xFFB45309),
+            tint: const Color(0xFF2563EB),
             screen: const GenerateTestScreen(),
-          ),
-          const SizedBox(height: 14),
-          _menuCard(
-            context: context,
-            title: 'Duyệt thanh toán Premium',
-            subtitle: 'Kích hoạt Premium sau khi xác minh thanh toán.',
-            icon: Icons.payments_rounded,
-            tint: const Color(0xFFDC2626),
-            screen: const ManagePremiumRequestsScreen(),
           ),
         ],
       ),

@@ -21,16 +21,16 @@ class ResultScreen extends StatelessWidget {
 
   Map<String, dynamic> _toMap(dynamic value) {
     if (value is Map<String, dynamic>) return value;
-    if (value is Map) {
-      return Map<String, dynamic>.from(value);
-    }
+    if (value is Map) return Map<String, dynamic>.from(value);
     return {};
   }
 
   List<Map<String, dynamic>> _toListMap(dynamic value) {
     if (value is List) {
       return value
-          .map((e) => e is Map ? Map<String, dynamic>.from(e) : <String, dynamic>{})
+          .map(
+            (e) => e is Map ? Map<String, dynamic>.from(e) : <String, dynamic>{},
+          )
           .toList();
     }
     return [];
@@ -38,11 +38,7 @@ class ResultScreen extends StatelessWidget {
 
   String _formatPercent(dynamic value) {
     final number = _toDouble(value);
-
-    if (number <= 1) {
-      return '${(number * 100).toStringAsFixed(1)}%';
-    }
-
+    if (number <= 1) return '${(number * 100).toStringAsFixed(1)}%';
     return '${number.toStringAsFixed(1)}%';
   }
 
@@ -101,10 +97,17 @@ class ResultScreen extends StatelessWidget {
 
   Widget _resultTile(Map<String, dynamic> item, int index) {
     final isCorrect = item['is_correct'] == true;
-    final content = (item['content'] ?? 'Câu hỏi ${index + 1}').toString();
+    final part = _toInt(item['part']);
+    final hidesPart2Content = part == 2;
+    final content = hidesPart2Content
+        ? 'Câu ${index + 1} - Part 2'
+        : (item['content'] ?? 'Câu hỏi ${index + 1}').toString();
     final selectedAnswer = (item['selected_answer'] ?? 'Chưa chọn').toString();
     final correctAnswer = (item['correct_answer'] ?? '').toString();
     final explanation = (item['explanation'] ?? '').toString();
+    final explanationLabel = hidesPart2Content
+        ? 'Ẩn cho Part 2'
+        : (explanation.isEmpty ? 'Không có' : explanation);
 
     return Card(
       child: ListTile(
@@ -118,7 +121,7 @@ class ResultScreen extends StatelessWidget {
           child: Text(
             'Bạn chọn: $selectedAnswer\n'
             'Đáp án đúng: $correctAnswer\n'
-            'Giải thích: ${explanation.isEmpty ? "Không có" : explanation}',
+            'Giải thích: $explanationLabel',
           ),
         ),
         trailing: Icon(

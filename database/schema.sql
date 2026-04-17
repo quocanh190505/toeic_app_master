@@ -11,6 +11,10 @@ DROP TABLE IF EXISTS refresh_tokens;
 DROP TABLE IF EXISTS user_studied_words;
 DROP TABLE IF EXISTS vocabulary_words;
 DROP TABLE IF EXISTS topics;
+DROP TABLE IF EXISTS published_test_items;
+DROP TABLE IF EXISTS published_tests;
+DROP TABLE IF EXISTS question_workflows;
+DROP TABLE IF EXISTS question_groups;
 DROP TABLE IF EXISTS user_bookmarks;
 DROP TABLE IF EXISTS test_attempt_answers;
 DROP TABLE IF EXISTS test_attempts;
@@ -27,14 +31,30 @@ CREATE TABLE users (
     password_hash VARCHAR(255) NOT NULL,
     role VARCHAR(20) NOT NULL DEFAULT 'user',
     target_score INT DEFAULT 750,
+    membership_plan VARCHAR(20) NOT NULL DEFAULT 'basic',
+    premium_started_at DATETIME NULL,
+    premium_expires_at DATETIME NULL,
+    premium_cancel_at_period_end BOOLEAN NOT NULL DEFAULT FALSE,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     INDEX idx_users_email (email),
-    INDEX idx_users_role (role)
+    INDEX idx_users_role (role),
+    INDEX idx_users_membership_plan (membership_plan),
+    INDEX idx_users_premium_expires_at (premium_expires_at)
 );
 
 CREATE TABLE questions (
     id INT PRIMARY KEY AUTO_INCREMENT,
     part INT NOT NULL,
+    section VARCHAR(20) NULL,
+    question_group_id INT NULL,
+    difficulty VARCHAR(20) NOT NULL DEFAULT 'medium',
+    approval_status VARCHAR(20) NOT NULL DEFAULT 'approved',
+    group_key VARCHAR(100) NULL,
+    question_order INT NOT NULL DEFAULT 1,
+    instructions TEXT NULL,
+    shared_content TEXT NULL,
+    shared_audio_url VARCHAR(500) NULL,
+    shared_image_url VARCHAR(500) NULL,
     content TEXT NOT NULL,
     option_a VARCHAR(255) NOT NULL,
     option_b VARCHAR(255) NOT NULL,
@@ -44,8 +64,60 @@ CREATE TABLE questions (
     explanation TEXT NULL,
     audio_url VARCHAR(500) NULL,
     image_url VARCHAR(500) NULL,
+    review_note TEXT NULL,
+    source_hash VARCHAR(64) NULL UNIQUE,
+    submitted_by INT NULL,
+    approved_by INT NULL,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    INDEX idx_questions_part (part)
+    INDEX idx_questions_part (part),
+    INDEX idx_questions_section (section),
+    INDEX idx_questions_question_group_id (question_group_id),
+    INDEX idx_questions_group_key (group_key),
+    INDEX idx_questions_difficulty (difficulty),
+    INDEX idx_questions_approval_status (approval_status),
+    INDEX idx_questions_submitted_by (submitted_by),
+    INDEX idx_questions_approved_by (approved_by),
+    CONSTRAINT fk_questions_submitted_by FOREIGN KEY (submitted_by) REFERENCES users(id),
+    CONSTRAINT fk_questions_approved_by FOREIGN KEY (approved_by) REFERENCES users(id)
+);
+
+CREATE TABLE question_groups (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    group_key VARCHAR(100) NOT NULL UNIQUE,
+    part INT NOT NULL,
+    section VARCHAR(20) NULL,
+    instructions TEXT NULL,
+    shared_content TEXT NULL,
+    shared_audio_url VARCHAR(500) NULL,
+    shared_image_url VARCHAR(500) NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_question_groups_part (part),
+    INDEX idx_question_groups_section (section)
+);
+
+ALTER TABLE questions
+    ADD CONSTRAINT fk_questions_question_group
+        FOREIGN KEY (question_group_id) REFERENCES question_groups(id);
+
+CREATE TABLE question_workflows (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    question_id INT NOT NULL,
+    difficulty VARCHAR(20) NOT NULL DEFAULT 'medium',
+    approval_status VARCHAR(20) NOT NULL DEFAULT 'approved',
+    review_note TEXT NULL,
+    source_hash VARCHAR(64) NULL,
+    submitted_by INT NULL,
+    approved_by INT NULL,
+    submitted_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    reviewed_at DATETIME NULL,
+    CONSTRAINT uq_question_workflows_question UNIQUE (question_id),
+    CONSTRAINT uq_question_workflows_source_hash UNIQUE (source_hash),
+    CONSTRAINT fk_question_workflows_question FOREIGN KEY (question_id) REFERENCES questions(id),
+    CONSTRAINT fk_question_workflows_submitted_by FOREIGN KEY (submitted_by) REFERENCES users(id),
+    CONSTRAINT fk_question_workflows_approved_by FOREIGN KEY (approved_by) REFERENCES users(id),
+    INDEX idx_question_workflows_difficulty (difficulty),
+    INDEX idx_question_workflows_approval_status (approval_status),
+    INDEX idx_question_workflows_submitted_at (submitted_at)
 );
 
 CREATE TABLE user_progress (
@@ -76,6 +148,38 @@ CREATE TABLE test_attempts (
         FOREIGN KEY (user_id) REFERENCES users(id),
     INDEX idx_test_attempts_user_id (user_id),
     INDEX idx_test_attempts_submitted_at (submitted_at)
+);
+
+CREATE TABLE published_tests (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    title VARCHAR(255) NOT NULL,
+    description TEXT NULL,
+    test_type VARCHAR(20) NOT NULL DEFAULT 'full',
+    part INT NULL,
+    status VARCHAR(20) NOT NULL DEFAULT 'published',
+    total_questions INT NOT NULL DEFAULT 0,
+    created_by INT NOT NULL,
+    published_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT fk_published_tests_created_by
+        FOREIGN KEY (created_by) REFERENCES users(id),
+    INDEX idx_published_tests_status (status),
+    INDEX idx_published_tests_test_type (test_type),
+    INDEX idx_published_tests_published_at (published_at)
+);
+
+CREATE TABLE published_test_items (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    published_test_id INT NOT NULL,
+    question_id INT NOT NULL,
+    display_order INT NOT NULL DEFAULT 1,
+    CONSTRAINT uq_published_test_question UNIQUE (published_test_id, question_id),
+    CONSTRAINT uq_published_test_order UNIQUE (published_test_id, display_order),
+    CONSTRAINT fk_published_test_items_test
+        FOREIGN KEY (published_test_id) REFERENCES published_tests(id) ON DELETE CASCADE,
+    CONSTRAINT fk_published_test_items_question
+        FOREIGN KEY (question_id) REFERENCES questions(id),
+    INDEX idx_published_test_items_test (published_test_id),
+    INDEX idx_published_test_items_question (question_id)
 );
 
 CREATE TABLE test_attempt_answers (
@@ -173,6 +277,22 @@ VALUES
         '$2b$12$kkg/a91Ps0ldr796/XnjK.5sfbuy4sef1fnjrst/gKz7BXEuX5Y9G',
         'user',
         750
+    ),
+    (
+        3,
+        'Teacher TOEIC',
+        'teacher@toeic.com',
+        '$2b$12$kkg/a91Ps0ldr796/XnjK.5sfbuy4sef1fnjrst/gKz7BXEuX5Y9G',
+        'teacher',
+        850
+    ),
+    (
+        4,
+        'Moderator TOEIC',
+        'moderator@toeic.com',
+        '$2b$12$kkg/a91Ps0ldr796/XnjK.5sfbuy4sef1fnjrst/gKz7BXEuX5Y9G',
+        'moderator',
+        850
     );
 
 INSERT INTO user_progress (
@@ -188,7 +308,9 @@ INSERT INTO user_progress (
 )
 VALUES
     (1, 0, 0, 0, 0, 0, 0, 0, 0),
-    (2, 12, 3, 5, 68.5, 40, 27, 9, 8.5);
+    (2, 12, 3, 5, 68.5, 40, 27, 9, 8.5),
+    (3, 0, 0, 0, 0, 0, 0, 0, 0),
+    (4, 0, 0, 0, 0, 0, 0, 0, 0);
 
 INSERT INTO topics (id, name, description, image_url)
 VALUES
@@ -447,11 +569,10 @@ INSERT INTO user_bookmarks (user_id, question_id)
 VALUES
     (2, 2);
 
-ALTER TABLE users AUTO_INCREMENT = 3;
+ALTER TABLE users AUTO_INCREMENT = 5;
 ALTER TABLE topics AUTO_INCREMENT = 3;
 ALTER TABLE vocabulary_words AUTO_INCREMENT = 5;
 ALTER TABLE questions AUTO_INCREMENT = 201;
 ALTER TABLE test_attempts AUTO_INCREMENT = 2;
 
 SET FOREIGN_KEY_CHECKS = 1;
-
