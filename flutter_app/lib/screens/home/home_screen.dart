@@ -11,6 +11,7 @@ import '../leaderboard/leaderboard_screen.dart';
 import '../practice/practice_screen.dart';
 import '../profile/profile_screen.dart';
 import '../vocabulary/vocabulary_screen.dart';
+import 'published_tests_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -135,6 +136,34 @@ class _HomeDashboardTabState extends State<HomeDashboardTab> {
     );
   }
 
+  Future<void> _showPremiumDialog() async {
+    await showDialog<void>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Nâng cấp Premium'),
+        content: const Text(
+          'Full Test và Kho đề đã phát hành là tính năng Premium. Hãy vào tab Tôi để nâng cấp gói.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Để sau'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(context);
+              Navigator.push(
+                this.context,
+                MaterialPageRoute(builder: (_) => const ProfileScreen()),
+              );
+            },
+            child: const Text('Mở hồ sơ'),
+          ),
+        ],
+      ),
+    );
+  }
+
   void _openMiniTest() {
     showModalBottomSheet<void>(
       context: context,
@@ -153,10 +182,7 @@ class _HomeDashboardTabState extends State<HomeDashboardTab> {
                   padding: EdgeInsets.only(top: 8, bottom: 12),
                   child: Text(
                     'Chọn Part để luyện tập',
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w800,
-                    ),
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
                   ),
                 ),
                 ListTile(
@@ -211,7 +237,9 @@ class _HomeDashboardTabState extends State<HomeDashboardTab> {
                           ),
                         ),
                         title: Text('Luyện Part $partNumber'),
-                        subtitle: const Text('Bắt đầu với bộ câu hỏi ngắn gọn'),
+                        subtitle: const Text(
+                          'Bắt đầu với bộ câu hỏi ngắn gọn',
+                        ),
                         trailing: const Icon(Icons.chevron_right_rounded),
                         onTap: () {
                           Navigator.pop(context);
@@ -238,11 +266,26 @@ class _HomeDashboardTabState extends State<HomeDashboardTab> {
   }
 
   void _openFullTest() {
+    if (user?.isPremium != true) {
+      _showPremiumDialog();
+      return;
+    }
     Navigator.push(
       context,
       MaterialPageRoute(
         builder: (_) => const PracticeScreen(testType: 'full'),
       ),
+    );
+  }
+
+  void _openPublishedTests() {
+    if (user?.isPremium != true) {
+      _showPremiumDialog();
+      return;
+    }
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => const PublishedTestsScreen()),
     );
   }
 
@@ -293,6 +336,7 @@ class _HomeDashboardTabState extends State<HomeDashboardTab> {
     final averageScore = progress['average_score'] ?? 0;
     final attemptsCount = summary['attempts_count'] ?? 0;
     final studiedWordsCount = summary['studied_words_count'] ?? 0;
+    final isPremium = user?.isPremium == true;
 
     return Scaffold(
       appBar: AppBar(
@@ -370,10 +414,7 @@ class _HomeDashboardTabState extends State<HomeDashboardTab> {
                             ),
                           ],
                         ),
-                        child: const PtitLogo(
-                          width: 92,
-                          showSubtitle: false,
-                        ),
+                        child: const PtitLogo(width: 92, showSubtitle: false),
                       ),
                     ),
                     const SizedBox(height: 10),
@@ -395,14 +436,33 @@ class _HomeDashboardTabState extends State<HomeDashboardTab> {
                         fontSize: 14,
                       ),
                     ),
+                    const SizedBox(height: 10),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 14,
+                        vertical: 8,
+                      ),
+                      decoration: BoxDecoration(
+                        color: isPremium
+                            ? const Color(0xFFFFF7ED)
+                            : Colors.white.withValues(alpha: 0.14),
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Text(
+                        isPremium ? 'Premium' : 'Basic',
+                        style: TextStyle(
+                          color: isPremium
+                              ? const Color(0xFFB45309)
+                              : Colors.white,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                    ),
                     const SizedBox(height: 18),
                     Row(
                       children: [
                         Expanded(
-                          child: _statChip(
-                            'Điểm cao nhất',
-                            '$highestScore',
-                          ),
+                          child: _statChip('Điểm cao nhất', '$highestScore'),
                         ),
                         const SizedBox(width: 12),
                         Expanded(
@@ -439,10 +499,7 @@ class _HomeDashboardTabState extends State<HomeDashboardTab> {
               const SizedBox(height: 24),
               const Text(
                 'Chọn chế độ luyện tập',
-                style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.w800,
-                ),
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800),
               ),
               const SizedBox(height: 12),
               Card(
@@ -477,6 +534,12 @@ class _HomeDashboardTabState extends State<HomeDashboardTab> {
                         onPressed: _openFullTest,
                         icon: const Icon(Icons.article_outlined),
                         label: const Text('Full Test'),
+                      ),
+                      const SizedBox(height: 10),
+                      OutlinedButton.icon(
+                        onPressed: _openPublishedTests,
+                        icon: const Icon(Icons.library_books_outlined),
+                        label: const Text('Kho đề đã phát hành'),
                       ),
                     ],
                   ),

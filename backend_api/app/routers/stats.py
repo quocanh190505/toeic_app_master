@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 from sqlalchemy import case, func
+from datetime import datetime, timezone
 
 from app.core.database import get_db
 from app.core.security import get_current_user
@@ -14,6 +15,17 @@ from app.models.entities import (
 )
 
 router = APIRouter(prefix="/stats", tags=["stats"])
+
+
+def is_user_premium_active(user: User) -> bool:
+    if (user.membership_plan or "basic").lower() != "premium":
+        return False
+    if user.premium_expires_at is None:
+        return False
+    expires_at = user.premium_expires_at
+    if expires_at.tzinfo is None:
+        expires_at = expires_at.replace(tzinfo=timezone.utc)
+    return expires_at >= datetime.now(timezone.utc)
 
 
 @router.get("/dashboard/me")
@@ -39,6 +51,9 @@ def my_dashboard(
             "full_name": current_user.full_name,
             "email": current_user.email,
             "target_score": current_user.target_score,
+            "membership_plan": current_user.membership_plan or "basic",
+            "is_premium": is_user_premium_active(current_user),
+            "premium_expires_at": current_user.premium_expires_at,
         },
         "progress": {
             "studied_words": progress.studied_words if progress else 0,

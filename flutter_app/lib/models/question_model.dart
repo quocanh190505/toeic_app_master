@@ -2,6 +2,8 @@ class QuestionModel {
   final int id;
   final int part;
   final String? section;
+  final String? difficulty;
+  final String? approvalStatus;
   final String? groupKey;
   final int questionOrder;
   final String? instructions;
@@ -17,6 +19,8 @@ class QuestionModel {
     required this.id,
     required this.part,
     this.section,
+    this.difficulty,
+    this.approvalStatus,
     this.groupKey,
     this.questionOrder = 1,
     this.instructions,
@@ -47,6 +51,8 @@ class QuestionModel {
           ? normalizedJson['part']
           : int.tryParse(normalizedJson['part']?.toString() ?? '') ?? 0,
       section: normalizedJson['section']?.toString(),
+      difficulty: normalizedJson['difficulty']?.toString(),
+      approvalStatus: normalizedJson['approval_status']?.toString(),
       groupKey: normalizedJson['group_key']?.toString(),
       questionOrder: normalizedJson['question_order'] is int
           ? normalizedJson['question_order']

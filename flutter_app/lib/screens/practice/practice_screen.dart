@@ -12,11 +12,15 @@ import 'result_screen.dart';
 class PracticeScreen extends StatefulWidget {
   final String testType;
   final int? part;
+  final String? title;
+  final List<QuestionModel>? initialQuestions;
 
   const PracticeScreen({
     super.key,
     required this.testType,
     this.part,
+    this.title,
+    this.initialQuestions,
   });
 
   @override
@@ -54,7 +58,8 @@ class _PracticeScreenState extends State<PracticeScreen> {
   int _currentUnitIndex = 0;
 
   bool get _isFullTest => widget.testType == 'full';
-  bool get _isStructuredPractice => _isFullTest || widget.part != null;
+  bool get _isStructuredPractice =>
+      _isFullTest || widget.part != null || widget.initialQuestions != null;
   bool get _hasUnits => _isStructuredPractice && fullTestUnits.isNotEmpty;
 
   _QuestionUnit? get _currentUnit {
@@ -146,7 +151,9 @@ class _PracticeScreenState extends State<PracticeScreen> {
     try {
       List<QuestionModel> data = [];
 
-      if (_isFullTest) {
+      if (widget.initialQuestions != null) {
+        data = widget.initialQuestions!;
+      } else if (_isFullTest) {
         data = await service.getFullTest();
       } else if (widget.part != null) {
         data = await service.getMiniTest(part: widget.part!);
@@ -1038,9 +1045,16 @@ class _PracticeScreenState extends State<PracticeScreen> {
       );
     }
 
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(_isFullTest ? 'Full Test' : 'Mini Test'),
+      return Scaffold(
+        appBar: AppBar(
+          title: Text(
+            widget.title ??
+                (_isFullTest
+                    ? 'Full Test'
+                    : widget.testType == 'custom'
+                        ? 'Kho đề'
+                        : 'Mini Test'),
+          ),
         actions: [
           if (_isStructuredPractice)
             IconButton(

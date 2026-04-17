@@ -50,7 +50,7 @@ def decode_token(token: str):
     except JWTError:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid token",
+            detail="Phiên đăng nhập không hợp lệ.",
         )
 
 
@@ -59,7 +59,7 @@ def decode_access_token(token: str):
     if payload.get("type") != "access":
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid access token",
+            detail="Phiên đăng nhập không hợp lệ.",
         )
     return payload
 
@@ -69,6 +69,6 @@ def decode_refresh_token(token: str):
     if payload.get("type") != "refresh":
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid refresh token",
+            detail="Phiên đăng nhập không hợp lệ.",
         )
     return payload

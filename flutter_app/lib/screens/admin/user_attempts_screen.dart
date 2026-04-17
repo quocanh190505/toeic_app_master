@@ -27,6 +27,11 @@ class _UserAttemptsScreenState extends State<UserAttemptsScreen> {
   bool loading = true;
   String? error;
 
+  int _toInt(dynamic value, [int fallback = 0]) {
+    if (value is int) return value;
+    return int.tryParse(value?.toString() ?? '') ?? fallback;
+  }
+
   @override
   void initState() {
     super.initState();
@@ -108,7 +113,7 @@ class _UserAttemptsScreenState extends State<UserAttemptsScreen> {
                             ),
                           ),
                         ...attempts.map((item) {
-                          final attemptId = item['attempt_id'] as int? ?? 0;
+                          final attemptId = _toInt(item['attempt_id']);
                           final testType = (item['test_type'] ?? 'mini')
                               .toString()
                               .toUpperCase();

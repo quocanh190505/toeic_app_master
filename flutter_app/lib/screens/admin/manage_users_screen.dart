@@ -18,6 +18,11 @@ class _ManageUsersScreenState extends State<ManageUsersScreen> {
   bool loading = true;
   String? error;
 
+  int _toInt(dynamic value, [int fallback = 0]) {
+    if (value is int) return value;
+    return int.tryParse(value?.toString() ?? '') ?? fallback;
+  }
+
   @override
   void initState() {
     super.initState();
@@ -44,14 +49,56 @@ class _ManageUsersScreenState extends State<ManageUsersScreen> {
   }
 
   Future<void> changeRole(int userId, String currentRole) async {
-    final newRole = currentRole == 'admin' ? 'user' : 'admin';
+    String selectedRole = currentRole;
+    final result = await showDialog<String>(
+      context: context,
+      builder: (_) {
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            return AlertDialog(
+              title: const Text('Cập nhật role'),
+              content: DropdownButtonFormField<String>(
+                initialValue: selectedRole,
+                decoration: const InputDecoration(labelText: 'Role'),
+                items: const [
+                  DropdownMenuItem(value: 'user', child: Text('User')),
+                  DropdownMenuItem(value: 'teacher', child: Text('Teacher')),
+                  DropdownMenuItem(
+                    value: 'moderator',
+                    child: Text('Moderator'),
+                  ),
+                  DropdownMenuItem(value: 'admin', child: Text('Admin')),
+                ],
+                onChanged: (value) {
+                  setModalState(() {
+                    selectedRole = value ?? currentRole;
+                  });
+                },
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('Hủy'),
+                ),
+                ElevatedButton(
+                  onPressed: () => Navigator.pop(context, selectedRole),
+                  child: const Text('Lưu'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+
+    if (result == null || result == currentRole) return;
 
     try {
-      await service.updateUserRole(userId: userId, role: newRole);
+      await service.updateUserRole(userId: userId, role: result);
       await loadUsers();
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Đã đổi role thành $newRole')),
+        SnackBar(content: Text('Đã đổi role thành $result')),
       );
     } catch (e) {
       if (!mounted) return;
@@ -71,9 +118,7 @@ class _ManageUsersScreenState extends State<ManageUsersScreen> {
           title: const Text('Reset mật khẩu'),
           content: TextField(
             controller: ctrl,
-            decoration: const InputDecoration(
-              labelText: 'Mật khẩu mới',
-            ),
+            decoration: const InputDecoration(labelText: 'Mật khẩu mới'),
           ),
           actions: [
             TextButton(
@@ -90,7 +135,9 @@ class _ManageUsersScreenState extends State<ManageUsersScreen> {
                   if (!mounted) return;
                   Navigator.pop(context);
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Reset mật khẩu thành công')),
+                    const SnackBar(
+                      content: Text('Reset mật khẩu thành công'),
+                    ),
                   );
                 } catch (e) {
                   if (!mounted) return;
@@ -137,7 +184,7 @@ class _ManageUsersScreenState extends State<ManageUsersScreen> {
     if (confirmed != true) return;
 
     try {
-      await service.deleteUser(user['id']);
+      await service.deleteUser(_toInt(user['id']));
       await loadUsers();
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -151,10 +198,14 @@ class _ManageUsersScreenState extends State<ManageUsersScreen> {
     }
   }
 
-  Color _roleColor(String role) {
+  Color roleColor(String role) {
     switch (role.toLowerCase()) {
       case 'admin':
         return const Color(0xFF1D4ED8);
+      case 'teacher':
+        return const Color(0xFF7C3AED);
+      case 'moderator':
+        return const Color(0xFFF97316);
       default:
         return const Color(0xFF0F766E);
     }
@@ -165,7 +216,7 @@ class _ManageUsersScreenState extends State<ManageUsersScreen> {
       context,
       MaterialPageRoute(
         builder: (_) => UserAttemptsScreen(
-          userId: user['id'] as int,
+          userId: _toInt(user['id']),
           userName: (user['full_name'] ?? '').toString(),
           userEmail: (user['email'] ?? '').toString(),
         ),
@@ -176,9 +227,7 @@ class _ManageUsersScreenState extends State<ManageUsersScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Quản lý người dùng'),
-      ),
+      appBar: AppBar(title: const Text('Quản lý người dùng')),
       body: Container(
         decoration: const BoxDecoration(
           gradient: LinearGradient(
@@ -198,255 +247,134 @@ class _ManageUsersScreenState extends State<ManageUsersScreen> {
                   ? ListView(
                       padding: const EdgeInsets.all(20),
                       children: [
-                        const _HeaderCard(
-                          title: 'Người dùng',
-                          subtitle: 'Không tải được danh sách user.',
-                          trailing: Icon(
-                            Icons.person_off,
-                            color: AppTheme.danger,
-                            size: 30,
-                          ),
-                        ),
-                        const SizedBox(height: 16),
-                        Card(
-                          child: Padding(
-                            padding: const EdgeInsets.all(20),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  error!,
-                                  style: const TextStyle(color: AppTheme.text),
-                                ),
-                                const SizedBox(height: 12),
-                                ElevatedButton(
-                                  onPressed: loadUsers,
-                                  child: const Text('Thử lại'),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
+                        Text(error!, style: const TextStyle(color: AppTheme.text)),
                       ],
                     )
                   : ListView(
                       padding: const EdgeInsets.all(20),
-                      children: [
-                        _HeaderCard(
-                          title: '${users.length} tài khoản',
-                          subtitle:
-                              'Theo dõi tài khoản, đổi role, reset mật khẩu và xóa người dùng.',
-                          trailing: Container(
-                            padding: const EdgeInsets.all(14),
-                            decoration: BoxDecoration(
-                              color: Colors.white.withValues(alpha: 0.9),
-                              borderRadius: BorderRadius.circular(18),
-                            ),
-                            child: const Icon(
-                              Icons.groups_rounded,
-                              color: AppTheme.primary,
-                              size: 28,
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 20),
-                        ...users.map((u) {
-                          final role = (u['role'] ?? 'user').toString();
-                          final fullName = (u['full_name'] ?? '').toString();
-                          final email = (u['email'] ?? '').toString();
-                          final initialsSource =
-                              fullName.isNotEmpty ? fullName : email;
-                          final initials = initialsSource.isNotEmpty
-                              ? initialsSource
-                                  .trim()
-                                  .substring(0, 1)
-                                  .toUpperCase()
-                              : '?';
+                      children: users.map((u) {
+                        final role = (u['role'] ?? 'user').toString();
+                        final fullName = (u['full_name'] ?? '').toString();
+                        final email = (u['email'] ?? '').toString();
+                        final initialsSource = fullName.isNotEmpty ? fullName : email;
+                        final initials = initialsSource.isNotEmpty
+                            ? initialsSource.substring(0, 1).toUpperCase()
+                            : '?';
 
-                          return Padding(
-                            padding: const EdgeInsets.only(bottom: 14),
-                            child: Card(
-                              child: Padding(
-                                padding: const EdgeInsets.all(18),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Row(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      children: [
-                                        CircleAvatar(
-                                          radius: 26,
-                                          backgroundColor:
-                                              const Color(0xFFDBEAFE),
-                                          foregroundColor: AppTheme.primary,
-                                          child: Text(
-                                            initials,
-                                            style: const TextStyle(
-                                              fontWeight: FontWeight.w700,
+                        return Padding(
+                          padding: const EdgeInsets.only(bottom: 14),
+                          child: Card(
+                            child: Padding(
+                              padding: const EdgeInsets.all(18),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      CircleAvatar(
+                                        radius: 26,
+                                        backgroundColor: const Color(0xFFDBEAFE),
+                                        foregroundColor: AppTheme.primary,
+                                        child: Text(
+                                          initials,
+                                          style: const TextStyle(
+                                            fontWeight: FontWeight.w700,
+                                          ),
+                                        ),
+                                      ),
+                                      const SizedBox(width: 14),
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          children: [
+                                            Text(
+                                              fullName.isEmpty
+                                                  ? 'Chưa cập nhật tên'
+                                                  : fullName,
+                                              style: const TextStyle(
+                                                fontSize: 17,
+                                                fontWeight: FontWeight.w700,
+                                                color: AppTheme.text,
+                                              ),
                                             ),
-                                          ),
-                                        ),
-                                        const SizedBox(width: 14),
-                                        Expanded(
-                                          child: Column(
-                                            crossAxisAlignment:
-                                                CrossAxisAlignment.start,
-                                            children: [
-                                              Text(
-                                                fullName.isEmpty
-                                                    ? 'Chưa cập nhật tên'
-                                                    : fullName,
-                                                style: const TextStyle(
-                                                  fontSize: 17,
+                                            const SizedBox(height: 4),
+                                            Text(
+                                              email,
+                                              style: const TextStyle(
+                                                color: AppTheme.subText,
+                                              ),
+                                            ),
+                                            const SizedBox(height: 10),
+                                            Container(
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                horizontal: 12,
+                                                vertical: 7,
+                                              ),
+                                              decoration: BoxDecoration(
+                                                color: roleColor(role)
+                                                    .withValues(alpha: 0.12),
+                                                borderRadius:
+                                                    BorderRadius.circular(999),
+                                              ),
+                                              child: Text(
+                                                role.toUpperCase(),
+                                                style: TextStyle(
+                                                  color: roleColor(role),
                                                   fontWeight: FontWeight.w700,
-                                                  color: AppTheme.text,
+                                                  letterSpacing: 0.5,
                                                 ),
                                               ),
-                                              const SizedBox(height: 4),
-                                              Text(
-                                                email,
-                                                style: const TextStyle(
-                                                  color: AppTheme.subText,
-                                                ),
-                                              ),
-                                              const SizedBox(height: 10),
-                                              Container(
-                                                padding:
-                                                    const EdgeInsets.symmetric(
-                                                  horizontal: 12,
-                                                  vertical: 7,
-                                                ),
-                                                decoration: BoxDecoration(
-                                                  color: _roleColor(role)
-                                                      .withValues(alpha: 0.12),
-                                                  borderRadius:
-                                                      BorderRadius.circular(
-                                                          999),
-                                                ),
-                                                child: Text(
-                                                  role.toUpperCase(),
-                                                  style: TextStyle(
-                                                    color: _roleColor(role),
-                                                    fontWeight: FontWeight.w700,
-                                                    letterSpacing: 0.5,
-                                                  ),
-                                                ),
-                                              ),
-                                            ],
-                                          ),
+                                            ),
+                                          ],
                                         ),
-                                      ],
-                                    ),
-                                    const SizedBox(height: 16),
-                                    Wrap(
-                                      spacing: 10,
-                                      runSpacing: 10,
-                                      children: [
-                                        OutlinedButton.icon(
-                                          onPressed: () => openUserAttempts(u),
-                                          icon:
-                                              const Icon(Icons.history_rounded),
-                                          label: const Text('Lịch sử làm bài'),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 16),
+                                  Wrap(
+                                    spacing: 10,
+                                    runSpacing: 10,
+                                    children: [
+                                      OutlinedButton.icon(
+                                        onPressed: () => openUserAttempts(u),
+                                        icon:
+                                            const Icon(Icons.history_rounded),
+                                        label: const Text('Lịch sử làm bài'),
+                                      ),
+                                      OutlinedButton.icon(
+                                        onPressed: () =>
+                                            changeRole(_toInt(u['id']), role),
+                                        icon: const Icon(Icons.swap_horiz),
+                                        label: const Text('Đổi role'),
+                                      ),
+                                      OutlinedButton.icon(
+                                        onPressed: () =>
+                                            resetPasswordDialog(_toInt(u['id'])),
+                                        icon: const Icon(Icons.lock_reset),
+                                        label: const Text('Reset mật khẩu'),
+                                      ),
+                                      FilledButton.icon(
+                                        style: FilledButton.styleFrom(
+                                          backgroundColor: AppTheme.danger,
                                         ),
-                                        OutlinedButton.icon(
-                                          onPressed: () =>
-                                              changeRole(u['id'], role),
-                                          icon: const Icon(Icons.swap_horiz),
-                                          label: const Text('Đổi role'),
-                                        ),
-                                        OutlinedButton.icon(
-                                          onPressed: () =>
-                                              resetPasswordDialog(u['id']),
-                                          icon: const Icon(Icons.lock_reset),
-                                          label: const Text('Reset mật khẩu'),
-                                        ),
-                                        FilledButton.icon(
-                                          style: FilledButton.styleFrom(
-                                            backgroundColor: AppTheme.danger,
-                                          ),
-                                          onPressed: () => deleteUserDialog(u),
-                                          icon:
-                                              const Icon(Icons.delete_outline),
-                                          label: const Text('Xóa'),
-                                        ),
-                                      ],
-                                    ),
-                                  ],
-                                ),
+                                        onPressed: () => deleteUserDialog(u),
+                                        icon:
+                                            const Icon(Icons.delete_outline),
+                                        label: const Text('Xóa'),
+                                      ),
+                                    ],
+                                  ),
+                                ],
                               ),
                             ),
-                          );
-                        }),
-                      ],
+                          ),
+                        );
+                      }).toList(),
                     ),
         ),
-      ),
-    );
-  }
-}
-
-class _HeaderCard extends StatelessWidget {
-  final String title;
-  final String subtitle;
-  final Widget trailing;
-
-  const _HeaderCard({
-    required this.title,
-    required this.subtitle,
-    required this.trailing,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [
-            Color(0xFF2563EB),
-            Color(0xFF0F172A),
-          ],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(28),
-        boxShadow: const [
-          BoxShadow(
-            color: Color(0x1F2563EB),
-            blurRadius: 28,
-            offset: Offset(0, 14),
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 24,
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  subtitle,
-                  style: const TextStyle(
-                    color: Color(0xFFDCE7FF),
-                    height: 1.45,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(width: 16),
-          trailing,
-        ],
       ),
     );
   }

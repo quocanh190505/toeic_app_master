@@ -1,0 +1,23 @@
+PART: 5
+DIFFICULTY: easy
+QUESTION: The meeting will start at 9 A.M.
+A: starts
+B: start
+C: started
+D: starting
+ANSWER: B
+EXPLANATION: Sau "will" dung dong tu nguyen mau.
+===
+PART: 6
+DIFFICULTY: medium
+GROUP_KEY: reading_set_01
+QUESTION_ORDER: 1
+INSTRUCTIONS: Read the text below and answer the questions.
+SHARED_CONTENT: Dear staff, the office will close early on Friday for maintenance.
+QUESTION: Why will the office close early on Friday?
+A: To celebrate a holiday
+B: To conduct maintenance
+C: To hold a meeting
+D: To welcome visitors
+ANSWER: B
+EXPLANATION: The passage states that the office will close early for maintenance.

@@ -2,9 +2,8 @@ import 'package:flutter/material.dart';
 
 import 'core/theme/app_theme.dart';
 import 'models/user_model.dart';
-import 'screens/admin/admin_screen.dart';
+import 'screens/admin/role_home_resolver.dart';
 import 'screens/auth/login_screen.dart';
-import 'screens/home/home_screen.dart';
 import 'services/auth_service.dart';
 
 void main() {
@@ -51,11 +50,7 @@ class SplashGate extends StatelessWidget {
           return const LoginScreen();
         }
 
-        if (user.role.toLowerCase() == 'admin') {
-          return const AdminScreen();
-        }
-
-        return const HomeScreen();
+        return homeForRole(user.role);
       },
     );
   }

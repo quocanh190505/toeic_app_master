@@ -32,6 +32,7 @@ class _CreateQuestionScreenState extends State<CreateQuestionScreen> {
 
   int part = 1;
   String section = 'listening';
+  String difficulty = 'medium';
   String correctAnswer = 'A';
   String? sharedAudioPath;
   String? sharedImagePath;
@@ -41,6 +42,12 @@ class _CreateQuestionScreenState extends State<CreateQuestionScreen> {
   String? error;
 
   bool get _isEdit => widget.question != null;
+
+  int _toInt(dynamic value, [int fallback = 0]) {
+    if (value is int) return value;
+    return int.tryParse(value?.toString() ?? '') ?? fallback;
+  }
+
   String? get _existingSharedAudioUrl =>
       widget.question?['shared_audio_url']?.toString();
   String? get _existingSharedImageUrl =>
@@ -53,9 +60,10 @@ class _CreateQuestionScreenState extends State<CreateQuestionScreen> {
     super.initState();
     final question = widget.question;
     if (question != null) {
-      part = question['part'] ?? 1;
-      section = question['section']?.toString() ??
-          (part <= 4 ? 'listening' : 'reading');
+      part = _toInt(question['part'], 1);
+      section =
+          question['section']?.toString() ?? (part <= 4 ? 'listening' : 'reading');
+      difficulty = question['difficulty']?.toString() ?? 'medium';
       groupKeyCtrl.text = question['group_key']?.toString() ?? '';
       questionOrderCtrl.text = question['question_order']?.toString() ?? '1';
       instructionsCtrl.text = question['instructions']?.toString() ?? '';
@@ -69,59 +77,36 @@ class _CreateQuestionScreenState extends State<CreateQuestionScreen> {
       optionDCtrl.text = question['option_d']?.toString() ?? '';
       correctAnswer = question['correct_answer']?.toString() ?? 'A';
       explanationCtrl.text = question['explanation']?.toString() ?? '';
-    } else {
-      section = part <= 4 ? 'listening' : 'reading';
     }
   }
 
-  Future<void> pickAudio() async {
+  Future<void> _pickAudio({required bool shared}) async {
     final result = await FilePicker.platform.pickFiles(
       type: FileType.custom,
       allowedExtensions: ['mp3', 'wav', 'aac', 'ogg', 'm4a'],
     );
-
-    if (result != null && result.files.single.path != null) {
-      setState(() {
-        audioPath = result.files.single.path!;
-      });
-    }
+    final path = result?.files.single.path;
+    if (path == null) return;
+    setState(() {
+      if (shared) {
+        sharedAudioPath = path;
+      } else {
+        audioPath = path;
+      }
+    });
   }
 
-  Future<void> pickSharedAudio() async {
-    final result = await FilePicker.platform.pickFiles(
-      type: FileType.custom,
-      allowedExtensions: ['mp3', 'wav', 'aac', 'ogg', 'm4a'],
-    );
-
-    if (result != null && result.files.single.path != null) {
-      setState(() {
-        sharedAudioPath = result.files.single.path!;
-      });
-    }
-  }
-
-  Future<void> pickImage() async {
-    final result = await FilePicker.platform.pickFiles(
-      type: FileType.image,
-    );
-
-    if (result != null && result.files.single.path != null) {
-      setState(() {
-        imagePath = result.files.single.path!;
-      });
-    }
-  }
-
-  Future<void> pickSharedImage() async {
-    final result = await FilePicker.platform.pickFiles(
-      type: FileType.image,
-    );
-
-    if (result != null && result.files.single.path != null) {
-      setState(() {
-        sharedImagePath = result.files.single.path!;
-      });
-    }
+  Future<void> _pickImage({required bool shared}) async {
+    final result = await FilePicker.platform.pickFiles(type: FileType.image);
+    final path = result?.files.single.path;
+    if (path == null) return;
+    setState(() {
+      if (shared) {
+        sharedImagePath = path;
+      } else {
+        imagePath = path;
+      }
+    });
   }
 
   Future<void> submit() async {
@@ -131,15 +116,15 @@ class _CreateQuestionScreenState extends State<CreateQuestionScreen> {
         optionCCtrl.text.trim().isEmpty ||
         optionDCtrl.text.trim().isEmpty) {
       setState(() {
-        error = 'Vui lòng nhập đầy đủ nội dung câu hỏi và 4 đáp án';
+        error = 'Vui lòng nhập đầy đủ nội dung câu hỏi và 4 đáp án.';
       });
       return;
     }
 
-    final parsedQuestionOrder = int.tryParse(questionOrderCtrl.text.trim());
-    if (parsedQuestionOrder == null || parsedQuestionOrder < 1) {
+    final questionOrder = int.tryParse(questionOrderCtrl.text.trim());
+    if (questionOrder == null || questionOrder < 1) {
       setState(() {
-        error = 'Thứ tự câu trong nhóm phải là số nguyên lớn hơn hoặc bằng 1';
+        error = 'Thứ tự câu trong nhóm phải là số nguyên lớn hơn hoặc bằng 1.';
       });
       return;
     }
@@ -150,13 +135,12 @@ class _CreateQuestionScreenState extends State<CreateQuestionScreen> {
     });
 
     try {
-      final questionOrder = parsedQuestionOrder;
-
       if (_isEdit) {
         await service.updateQuestion(
-          questionId: widget.question!['id'] as int,
+          questionId: _toInt(widget.question?['id']),
           part: part,
           section: section,
+          difficulty: difficulty,
           groupKey: groupKeyCtrl.text.trim(),
           questionOrder: questionOrder,
           instructions: instructionsCtrl.text.trim(),
@@ -179,6 +163,7 @@ class _CreateQuestionScreenState extends State<CreateQuestionScreen> {
         await service.createQuestion(
           part: part,
           section: section,
+          difficulty: difficulty,
           groupKey: groupKeyCtrl.text.trim(),
           questionOrder: questionOrder,
           instructions: instructionsCtrl.text.trim(),
@@ -200,11 +185,10 @@ class _CreateQuestionScreenState extends State<CreateQuestionScreen> {
       }
 
       if (!mounted) return;
-
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            _isEdit ? 'Cập nhật câu hỏi thành công' : 'Tạo câu hỏi thành công',
+            _isEdit ? 'Cập nhật câu hỏi thành công.' : 'Tạo câu hỏi thành công.',
           ),
         ),
       );
@@ -214,11 +198,7 @@ class _CreateQuestionScreenState extends State<CreateQuestionScreen> {
         error = e.toString().replaceFirst('Exception: ', '');
       });
     } finally {
-      if (mounted) {
-        setState(() {
-          loading = false;
-        });
-      }
+      if (mounted) setState(() => loading = false);
     }
   }
 
@@ -237,6 +217,29 @@ class _CreateQuestionScreenState extends State<CreateQuestionScreen> {
     sharedImageUrlCtrl.dispose();
     imageUrlCtrl.dispose();
     super.dispose();
+  }
+
+  Widget _uploadTile({
+    required IconData icon,
+    required String title,
+    required String? path,
+    required String? existingUrl,
+    required VoidCallback onPick,
+  }) {
+    return Card(
+      child: ListTile(
+        leading: Icon(icon),
+        title: Text(title),
+        subtitle: Text(
+          path != null
+              ? path.split('/').last
+              : (existingUrl != null && existingUrl.isNotEmpty)
+                  ? existingUrl.split('/').last
+                  : 'Chưa chọn file',
+        ),
+        trailing: TextButton(onPressed: onPick, child: const Text('Chọn file')),
+      ),
+    );
   }
 
   @override
@@ -273,119 +276,65 @@ class _CreateQuestionScreenState extends State<CreateQuestionScreen> {
               initialValue: section,
               decoration: const InputDecoration(labelText: 'Section'),
               items: const [
-                DropdownMenuItem(
-                  value: 'listening',
-                  child: Text('Listening'),
-                ),
-                DropdownMenuItem(
-                  value: 'reading',
-                  child: Text('Reading'),
-                ),
+                DropdownMenuItem(value: 'listening', child: Text('Listening')),
+                DropdownMenuItem(value: 'reading', child: Text('Reading')),
               ],
-              onChanged: (v) {
-                setState(() {
-                  section = v ?? (part <= 4 ? 'listening' : 'reading');
-                });
-              },
+              onChanged: (v) => setState(() => section = v ?? section),
+            ),
+            const SizedBox(height: 12),
+            DropdownButtonFormField<String>(
+              initialValue: difficulty,
+              decoration: const InputDecoration(labelText: 'Mức độ'),
+              items: const [
+                DropdownMenuItem(value: 'easy', child: Text('Dễ')),
+                DropdownMenuItem(value: 'medium', child: Text('Trung bình')),
+                DropdownMenuItem(value: 'hard', child: Text('Khó')),
+              ],
+              onChanged: (v) => setState(() => difficulty = v ?? 'medium'),
             ),
             const SizedBox(height: 12),
             TextField(
               controller: groupKeyCtrl,
-              decoration: const InputDecoration(
-                labelText: 'Mã nhóm câu hỏi',
-                helperText:
-                    'Các câu cùng đoạn/audio dùng chung một mã nhóm, ví dụ P4_SET_01',
-              ),
+              decoration: const InputDecoration(labelText: 'Mã nhóm câu hỏi'),
             ),
             const SizedBox(height: 12),
             TextField(
               controller: questionOrderCtrl,
               keyboardType: TextInputType.number,
-              decoration: const InputDecoration(
-                labelText: 'Thứ tự câu trong nhóm',
-              ),
+              decoration: const InputDecoration(labelText: 'Thứ tự câu trong nhóm'),
             ),
             const SizedBox(height: 12),
             TextField(
               controller: instructionsCtrl,
               maxLines: 2,
-              decoration: const InputDecoration(
-                labelText: 'Hướng dẫn chung cho nhóm',
-              ),
+              decoration: const InputDecoration(labelText: 'Hướng dẫn chung'),
             ),
             const SizedBox(height: 12),
             TextField(
               controller: sharedContentCtrl,
               maxLines: 5,
-              decoration: const InputDecoration(
-                labelText: 'Đoạn văn / nội dung dùng chung',
-                helperText:
-                    'Dùng cho Part 6, 7 hoặc transcript/mô tả chung của Part 3, 4',
-              ),
-            ),
-            const SizedBox(height: 16),
-            Card(
-              child: ListTile(
-                leading: const Icon(Icons.library_music),
-                title: const Text('Chọn audio dùng chung cho nhóm'),
-                subtitle: Text(
-                  sharedAudioPath != null
-                      ? sharedAudioPath!.split('/').last
-                      : (_existingSharedAudioUrl != null &&
-                              _existingSharedAudioUrl!.isNotEmpty)
-                          ? 'Đang có audio nhóm: ${_existingSharedAudioUrl!.split('/').last}'
-                          : 'Chưa chọn file',
-                ),
-                trailing: TextButton(
-                  onPressed: pickSharedAudio,
-                  child: const Text('FilePicker'),
-                ),
-              ),
+              decoration: const InputDecoration(labelText: 'Nội dung dùng chung'),
             ),
             const SizedBox(height: 12),
-            if (_existingSharedAudioUrl != null &&
-                _existingSharedAudioUrl!.isNotEmpty &&
-                sharedAudioPath == null)
-              Align(
-                alignment: Alignment.centerLeft,
-                child: Text(
-                  'Audio nhóm hiện tại: ${ApiConstants.uploadUrl(_existingSharedAudioUrl)}',
-                  style: const TextStyle(
-                    color: AppTheme.subText,
-                    fontSize: 12,
-                  ),
-                ),
-              ),
-            if (_existingSharedAudioUrl != null &&
-                _existingSharedAudioUrl!.isNotEmpty &&
-                sharedAudioPath == null)
-              const SizedBox(height: 12),
-            Card(
-              child: ListTile(
-                leading: const Icon(Icons.photo_library_outlined),
-                title: const Text('Chon hinh dung chung cho nhom'),
-                subtitle: Text(
-                  sharedImagePath != null
-                      ? sharedImagePath!.split('/').last
-                      : (_existingSharedImageUrl != null &&
-                              _existingSharedImageUrl!.isNotEmpty)
-                          ? 'Dang co anh nhom: ${_existingSharedImageUrl!.split('/').last}'
-                          : 'Chua chon file',
-                ),
-                trailing: TextButton(
-                  onPressed: pickSharedImage,
-                  child: const Text('FilePicker'),
-                ),
-              ),
+            _uploadTile(
+              icon: Icons.library_music,
+              title: 'Audio dùng chung',
+              path: sharedAudioPath,
+              existingUrl: _existingSharedAudioUrl,
+              onPick: () => _pickAudio(shared: true),
+            ),
+            const SizedBox(height: 12),
+            _uploadTile(
+              icon: Icons.photo_library_outlined,
+              title: 'Hình ảnh dùng chung',
+              path: sharedImagePath,
+              existingUrl: _existingSharedImageUrl,
+              onPick: () => _pickImage(shared: true),
             ),
             const SizedBox(height: 12),
             TextField(
               controller: sharedImageUrlCtrl,
-              decoration: const InputDecoration(
-                labelText: 'Link / duong dan anh nhom',
-                helperText:
-                    'Co the nhap URL day du hoac duong dan nhu /uploads/images/example.png',
-              ),
+              decoration: const InputDecoration(labelText: 'Link hình ảnh nhóm'),
             ),
             if (_existingSharedImageUrl != null &&
                 _existingSharedImageUrl!.isNotEmpty &&
@@ -407,14 +356,12 @@ class _CreateQuestionScreenState extends State<CreateQuestionScreen> {
                   ),
                 ),
               ),
-              const SizedBox(height: 12),
             ],
+            const SizedBox(height: 12),
             TextField(
               controller: contentCtrl,
               maxLines: 3,
-              decoration: const InputDecoration(
-                labelText: 'Nội dung câu hỏi',
-              ),
+              decoration: const InputDecoration(labelText: 'Nội dung câu hỏi'),
             ),
             const SizedBox(height: 12),
             TextField(
@@ -446,83 +393,34 @@ class _CreateQuestionScreenState extends State<CreateQuestionScreen> {
                 DropdownMenuItem(value: 'C', child: Text('C')),
                 DropdownMenuItem(value: 'D', child: Text('D')),
               ],
-              onChanged: (v) {
-                setState(() {
-                  correctAnswer = v ?? 'A';
-                });
-              },
+              onChanged: (v) => setState(() => correctAnswer = v ?? 'A'),
             ),
             const SizedBox(height: 12),
             TextField(
               controller: explanationCtrl,
               maxLines: 3,
-              decoration: const InputDecoration(
-                labelText: 'Giải thích',
-              ),
-            ),
-            const SizedBox(height: 16),
-            Card(
-              child: ListTile(
-                leading: const Icon(Icons.audiotrack),
-                title: const Text('Chọn file audio'),
-                subtitle: Text(
-                  audioPath != null
-                      ? audioPath!.split('/').last
-                      : (_existingAudioUrl != null &&
-                              _existingAudioUrl!.isNotEmpty)
-                          ? 'Đang có audio: ${_existingAudioUrl!.split('/').last}'
-                          : 'Chưa chọn file',
-                ),
-                trailing: TextButton(
-                  onPressed: pickAudio,
-                  child: const Text('FilePicker'),
-                ),
-              ),
+              decoration: const InputDecoration(labelText: 'Giải thích'),
             ),
             const SizedBox(height: 12),
-            if (_existingAudioUrl != null &&
-                _existingAudioUrl!.isNotEmpty &&
-                audioPath == null)
-              Align(
-                alignment: Alignment.centerLeft,
-                child: Text(
-                  'Audio hiện tại: ${ApiConstants.uploadUrl(_existingAudioUrl)}',
-                  style: const TextStyle(
-                    color: AppTheme.subText,
-                    fontSize: 12,
-                  ),
-                ),
-              ),
-            if (_existingAudioUrl != null &&
-                _existingAudioUrl!.isNotEmpty &&
-                audioPath == null)
-              const SizedBox(height: 12),
-            Card(
-              child: ListTile(
-                leading: const Icon(Icons.image),
-                title: const Text('Chon hinh anh'),
-                subtitle: Text(
-                  imagePath != null
-                      ? imagePath!.split('/').last
-                      : (_existingImageUrl != null &&
-                              _existingImageUrl!.isNotEmpty)
-                          ? 'Dang co anh: ${_existingImageUrl!.split('/').last}'
-                          : 'Chua chon file',
-                ),
-                trailing: TextButton(
-                  onPressed: pickImage,
-                  child: const Text('FilePicker'),
-                ),
-              ),
+            _uploadTile(
+              icon: Icons.audiotrack,
+              title: 'Audio riêng của câu',
+              path: audioPath,
+              existingUrl: _existingAudioUrl,
+              onPick: () => _pickAudio(shared: false),
+            ),
+            const SizedBox(height: 12),
+            _uploadTile(
+              icon: Icons.image,
+              title: 'Hình ảnh riêng của câu',
+              path: imagePath,
+              existingUrl: _existingImageUrl,
+              onPick: () => _pickImage(shared: false),
             ),
             const SizedBox(height: 12),
             TextField(
               controller: imageUrlCtrl,
-              decoration: const InputDecoration(
-                labelText: 'Link / duong dan anh',
-                helperText:
-                    'Dung cho Part 1 neu may ao khong chon duoc anh tu gallery',
-              ),
+              decoration: const InputDecoration(labelText: 'Link hình ảnh riêng'),
             ),
             if (_existingImageUrl != null &&
                 _existingImageUrl!.isNotEmpty &&
@@ -551,7 +449,7 @@ class _CreateQuestionScreenState extends State<CreateQuestionScreen> {
                 alignment: Alignment.centerLeft,
                 child: Text(
                   error!,
-                  style: const TextStyle(color: Colors.red),
+                  style: const TextStyle(color: AppTheme.danger),
                 ),
               ),
             const SizedBox(height: 12),
